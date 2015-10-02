@@ -130,7 +130,6 @@ sta = reshape(sta0,nkt,[]);
 %% 4. Fit GLM (traditional version) via max likelihood
 
 %  Initialize params for fitting --------------
-Filter_rank = 1;
 gg0 = makeFittingStruct_GLM(sta,DTsim);
 gg0.tsp = tsp;
 gg0.tspi = 1;
