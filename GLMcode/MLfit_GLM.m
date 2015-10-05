@@ -13,7 +13,7 @@ function [gg, fval,H] = MLfit_GLM(gg,Stim,optimArgs);
 %     ggnew = new param struct (with ML params);
 %     fval = negative log-likelihood at ML estimate
 
-MAXSIZE  = 1e7;  % Maximum amount to be held in memory at once;
+MAXSIZE  = 2e7;  % Maximum amount to be held in memory at once;
 
 % Set optimization parameters 
 if nargin > 2

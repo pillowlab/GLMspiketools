@@ -24,7 +24,7 @@ else
 end
 
 % Set initial params
-MAXSIZE  = 1e7;  % Maximum amount to be held in memory at once;
+MAXSIZE  = 2e7;  % Maximum amount to be held in memory at once;
 prs0 = extractFitPrs_GLMbi(gg,Stim,MAXSIZE);
 
 % minimize negative log likelihood
