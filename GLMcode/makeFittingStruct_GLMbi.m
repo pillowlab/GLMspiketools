@@ -63,7 +63,7 @@ for j = 1:krank;
     if v(:,j)'*mux < 0  % Flip sign if match is better
         u(:,j) = -u(:,j); v(:,j) = -v(:,j);
     end
-    kt(:,j) = inv(ktbas'*ktbas)*ktbas'*(u(:,j)*s(j,j));
+    kt(:,j) = (ktbas'*ktbas)\(ktbas'*(u(:,j)*s(j,j)));
     kx(:,j) = v(:,j);
 end
 gg.ktbas = ktbas;
@@ -84,7 +84,7 @@ if nargin > 3
     end
     gg.iht = iht;
     gg.ihbas = ihbas;
-    gg.ih = inv(ihbas'*ihbas)*ihbas'*ih;
+    gg.ih = (ihbas'*ihbas)\(ihbas'*ih);
     gg.dc = glmstruct.dc;
 end
 

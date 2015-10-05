@@ -154,7 +154,7 @@ gg0.tspi = 1;
 
 % Do ML estimation of model params
 opts = {'display', 'iter', 'maxiter', 100};
-[gg2, negloglival] = MLfit_GLMbi(gg0,Stim,opts); % do ML (requires optimization toolbox)
+[gg2, negloglival] = MLfit_GLMbi(gg0,Stim,opts); % find ML estimate
 
 
 %% 6. Plot results ====================

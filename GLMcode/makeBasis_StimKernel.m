@@ -56,6 +56,7 @@ if nargin > 1
     end
 end
 
-kbasis = normalizecols(kbasis);
-%kbas = orth(kbasis);
-kbas = kbasis;
+kbas = orth(kbasis); % compute orthogonalized basis
+%kbasis = normalizecols(kbasis); % scale each basis vector to be unit vector
+%kbas = kbasis;
+
