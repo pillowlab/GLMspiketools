@@ -1,8 +1,10 @@
-% testscript_GLMbi.m
+% testscript_GLM_spatialStim.m
 %
 % Test code for simulating and fitting the GLM with a 2D stimulus filter
 % (1D time by 1D spatial), with both traditional and bilinear parametrization
 % of the stimulus kernel.
+%
+% [note: run 'setpaths' script in directory above before executing].
 %
 % Code Blocks:  
 %   1. Set up model params and plot
@@ -180,10 +182,11 @@ imagesc(gg2.k)
 title('ML estimate: bilinear filter'); xlabel('space'); 
 
 subplot(236); % ----------------------------------
-plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ih),'b',...
-    gg2.iht, exp(gg2.ihbas*gg2.ih), 'r');
-title('post-spike kernel');
-axis tight;
+plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ih),...
+    gg2.iht, exp(gg2.ihbas*gg2.ih));
+title('post-spike filter');
+legend('true','full GLM','bilinear GLM');
+box off; set(gca,'tickdir','out');axis tight;
 
 % Errors in STA and ML estimate
 ktmu = normalizecols([mean(ggsim.k,2),mean(gg1.k,2),mean(gg2.k,2)]);
