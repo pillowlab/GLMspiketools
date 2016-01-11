@@ -1,4 +1,4 @@
-function M = makeInterpMatrix2(slen, nbn);
+function M = makeInterpMatrix2(slen, nbn)
 % M = makeInterpMatrix2(slen, dt);
 %
 %  Make (sparse matrix) for interpolation.  
@@ -11,7 +11,7 @@ if nbn<1
     nbn = round(1./nbn);
 end
 
-c1 = [1./nbn:1./nbn:1]';
+c1 = [1/nbn:1/nbn:1]';
 cc = [c1; flipud(c1)-1/nbn];
 M = spalloc(nbn*slen,slen, 2*nbn*slen);
 phi = floor(nbn/2);
