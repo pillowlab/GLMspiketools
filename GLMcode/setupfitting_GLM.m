@@ -110,7 +110,11 @@ OPRS.ichunk = ichunk;
 OPRS.jchunk = jchunk;
 
 % ----- Make time interpolation matrix for stimulus -----------
-MMntrp = makeInterpMatrix2(max(diff(jchunk')),ndt); 
+if ndt == 1
+    MMntrp = speye(max(diff(jchunk'))); % just the identity
+else
+    MMntrp = makeInterpMatrix2(max(diff(jchunk')),ndt);
+end
 
 % ----- Nonlinearity -----------
 if isfield(gg, 'nlfun')
