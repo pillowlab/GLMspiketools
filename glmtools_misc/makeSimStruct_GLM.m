@@ -17,7 +17,7 @@ function S = makeSimStruct_GLM(nkt,dt)
 %        'ihbasprs' - basis for post-spike current
 
 % Create a default (temporal) stimulus filter
-tk = [0:nkt-1]'; % time indices for filter 
+tk = (0:nkt-1)'; % time indices for made-up filter 
 b1 = nkt/32; b2 = nkt/16;
 k1 = 1/(gamma(6)*b1)*(tk/b1).^5 .* exp(-tk/b1);  % Gamma pdfn
 k2 = 1/(gamma(6)*b2)*(tk/b2).^5 .* exp(-tk/b2);  % Gamma pdf
@@ -41,7 +41,7 @@ ihbasprs.ncols = 5;  % Number of basis vectors for post-spike kernel
 ihbasprs.hpeaks = [0 max(dt*10,4)];  % Peak location for first and last vectors
 ihbasprs.b = 1;  % How nonlinear to make spacings
 ihbasprs.absref = []; % absolute refractory period (optional)
-[iht,ihbas,ihbasis] = makeBasis_PostSpike(ihbasprs,dt);
+[iht,~,ihbasis] = makeBasis_PostSpike(ihbasprs,dt);
 ih = ihbasis*[-10 .5 1 -.5 -.5]';  % h current
 
 % Place parameters in structure
