@@ -61,5 +61,9 @@ OPTprs.ichunk = ichunk;  % fine time bins
 OPTprs.jchunk = jchunk;  % coarse time bins
 
 % time interpolation matrix for stimulus
-OPTprs.MMintrp = makeInterpMatrix2(max(diff(jchunk')),ndt);
+if ndt == 1
+    OPTprs.MMintrp = speye(max(diff(jchunk')));
+else
+    OPTprs.MMintrp = makeInterpMatrix2(max(diff(jchunk')),ndt);
+end
 
