@@ -176,7 +176,7 @@ opts = {'display', 'iter', 'maxiter', 100};
 gg0b = gg0; % initial parameters for fitting 
 gg0b.tsp = tsp{2};   % cell 2 spike times (vector)
 gg0b.tsp2 = tsp(1);  % spike trains from "coupled" cells (cell array of vectors)
-gg0b.kt = inv(gg0.ktbas'*gg0.ktbas)*gg0.ktbas'*sta2; % Project STA2 into basis 
+gg0b.kt = (gg0.ktbas'*gg0.ktbas)\(gg0.ktbas'*sta2); % Project STA2 into basis 
 gg0b.k = gg0b.ktbas*gg0b.kt; % Project STA onto basis for fitting
 
 [logli0b] = neglogli_GLM(gg0b,Stim);
