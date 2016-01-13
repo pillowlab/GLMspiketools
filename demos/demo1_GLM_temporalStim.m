@@ -138,7 +138,7 @@ title('Stim filters');
 legend('k_{true}', 'k_{STA}', 'k_{ML}', 'location', 'northwest');
 
 subplot(223);
-flts = normalizecols([ggsim.k, sta, gg.k]);
+flts = ([ggsim.k./norm(ggsim.k), sta, gg.k./norm(gg.k)]);
 plot(ttk, flts(:,1),'k', ttk,flts(:,2), ttk, flts(:,3), 'r');
 title('Normalized Stim filters');
 xlabel('time before spike (frames)');

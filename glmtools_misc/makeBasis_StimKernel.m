@@ -1,5 +1,5 @@
-function [kbas,kbasis] = makeBasis_StimKernel(kbasprs, nkt);
-%  [kbas, kbasis] = makeBasis_StimKernel(kbasprs, nkt);
+function [kbasorth,kbasis] = makeBasis_StimKernel(kbasprs, nkt);
+%  [kbasorth, kbasis] = makeBasis_StimKernel(kbasprs, nkt);
 % 
 %  Generates a basis consisting of raised cosines and several columns of
 %  identity matrix vectors for temporal structure of stimulus kernel
@@ -14,8 +14,8 @@ function [kbas,kbasis] = makeBasis_StimKernel(kbasprs, nkt);
 %        nkt = number of time samples in basis (optional)
 %
 %  Output:
-%        kbas = orthogonal basis
-%        kbasis = standard (non-orth) basis
+%        kbasorth = orthogonal basis
+%        kbasis   = standard raised cosine (non-orthongal) basis
 
 neye = kbasprs.neye;
 ncos = kbasprs.ncos;
@@ -35,7 +35,7 @@ yrnge = nlin(kpeaks+b);
 db = diff(yrnge)/(ncos-1);      % spacing between raised cosine peaks
 ctrs = yrnge(1):db:yrnge(2);  % centers for basis vectors
 mxt = invnl(yrnge(2)+2*db)-b; % maximum time bin
-kt0 = [0:kdt:mxt]';
+kt0 = (0:kdt:mxt)';
 nt = length(kt0);        % number of points in iht
 ff = @(x,c,dc)(cos(max(-pi,min(pi,(x-c)*pi/dc/2)))+1)/2; % raised cosine basis vector
 kbasis0 = ff(repmat(nlin(kt0+b), 1, ncos), repmat(ctrs, nt, 1), db);
@@ -56,6 +56,5 @@ if nargin > 1
     end
 end
 
-kbasis = normalizecols(kbasis);
-%kbas = orth(kbasis);
-kbas = kbasis;
+kbasis = bsxfun(@rdivide,kbasis,sqrt(sum(kbasis.^2))); % normalize columns to be unit vectors
+kbasorth = orth(kbasis);
