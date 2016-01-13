@@ -125,11 +125,15 @@ if mod(1,dt) ~= 0
     dt = 1/round(1/dt);
     fprintf(1, 'glmrunmod: reset dtsim = %.3f\n', dt);
 end
-[slen,swid] = size(Stim); % length of stimulus
+slen = size(Stim,1); % length of stimulus
 rlen = round(slen/dt);  % length of binned response
 
 % -------------  Compute filtered resp to signal ----------------
-Istm = sameconv(Stim,glmprs.k);  % filter stimulus with k
+Istm = zeros(slen,ncells);
+for jj = 1:ncells
+    Istm(:,jj) = sameconv(Stim,glmprs.k(:,:,jj));  % filter stimulus with k
+end
+% Compute finely sampled version
 Vmem = fastinterp2(Istm,round(1/dt)) + repmat(glmprs.dc,rlen,1);
 
 % -------------- Compute interpolated h current ----------------------
