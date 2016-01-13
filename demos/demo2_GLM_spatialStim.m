@@ -1,10 +1,8 @@
-% testscript_GLM_spatialStim.m
+% demo2_GLM_spatialStim.m
 %
 % Test code for simulating and fitting the GLM with a 2D stimulus filter
-% (1D time by 1D spatial), with both traditional and bilinear parametrization
+% (time x 1D space), with both traditional and bilinear parametrization
 % of the stimulus kernel.
-%
-% [note: run 'setpaths' script in directory above before executing].
 %
 % Code Blocks:  
 %   1. Set up model params and plot
@@ -31,7 +29,7 @@ kx = 1./sqrt(2*pi*4).*exp(-(xxk-nkx/2).^2/5);
 Filt = kt*kx'; % Make space-time separable filter
 ggsim.k = Filt./norm(Filt(:))*3; % Insert into simulation struct
 
-figure(1);  % === Make Fig: model params =======================
+%figure(1);  % === Make Fig: model params =======================
 subplot(3,5,[1,6]); % ------------------------------------------
 plot(kt,ttk);  axis tight;
 set(gca, 'ydir', 'reverse');
@@ -68,7 +66,7 @@ Stim = randn(slen,swid);  % Gaussian white noise stimulus
 [tsp, vmem,Ispk] = simGLM(ggsim, Stim);
 
 % ==== Make Figure ========
-figure(2); 
+%figure(2); 
 tt = [DTsim:DTsim:slen]';
 subplot(221); %------------------------
 imagesc(Stim'); 
@@ -98,7 +96,7 @@ xlabel('time (frames)');
 
 %% 3. Generate some training data ========================================
 
-slen = 1000; % Stimulus length (frames);  More samples gives better fit
+slen = 5000; % Stimulus length (frames);  More samples gives better fit
 Stim = round(rand(slen,swid))*2-1;  %  Run model on long, binary stimulus
 [tsp,vmem,ispk] = simGLM(ggsim,Stim);  % run model
 nsp = length(tsp);
@@ -107,26 +105,32 @@ nsp = length(tsp);
 sta0 = simpleSTC(Stim,tsp,nkt);
 sta = reshape(sta0,nkt,[]);
 
-% % ---------------
-% % Make param object with "true" params;
-% % ---------------
-% Filter_rank = 1;
-% ggTrue = makeFittingStruct_GLMbi(ggsim.k,Filter_rank,DTsim,ggsim);
-% % Set true kernel in this struct (i.e. not represented by default basis).
-% [u,s,v] = svd(ggsim.k);  
-% ggTrue.k = ggsim.k;
-% ggTrue.ktbas = eye(nkt);
-% ggTrue.kt = u(:,1);  
-% ggTrue.kx = v(:,1)*s(1,1);
-% % Insert spike times
-% ggTrue.tsp = tsp;
-% ggTrue.tspi = 1;  % Start computing likelihood from 1st spike
-% 
-% % ---------------
-% % Check that conditional intensity calc is correct 
-% % (if desired, compare to vmem returned by simGLM above)
-% [logliTrue, rrTrue,tt] = neglogli_GLM(ggTrue,Stim);
-% % ---------------
+exptmask= [50 slen];  % data range to use for fitting (eg, ignore first 50 bins)
+
+% ---------------
+% Make param object with "true" params (if desired).
+% ---------------
+Filter_rank = 1;
+ggTrue = makeFittingStruct_GLMbi(ggsim.k,DTsim,Filter_rank,ggsim);
+% Set true kernel in this struct (i.e. not represented by default basis).
+[u,s,v] = svd(ggsim.k);  
+ggTrue.k = ggsim.k;
+ggTrue.ktbas = eye(nkt);
+ggTrue.kt = u(:,1);  
+ggTrue.kx = v(:,1)*s(1,1);
+% Insert spike times
+ggTrue.tsp = tsp;
+
+% ---------------
+% Check that conditional intensity calc is correct 
+% (if desired, compare to vmem returned by simGLM above)
+[logliTrue, rrTrue,tt] = neglogli_GLM(ggTrue,Stim);
+subplot(211); plot(tt,vmem,tt,log(rrTrue));
+title('total filter output (computed 2 ways)');
+subplot(212); plot(tt,log(rrTrue)-vmem);
+title('difference');
+
+% ---------------
 
 
 %% 4. Fit GLM (traditional version) via max likelihood
@@ -134,31 +138,32 @@ sta = reshape(sta0,nkt,[]);
 %  Initialize params for fitting --------------
 gg0 = makeFittingStruct_GLM(sta,DTsim);
 gg0.tsp = tsp;
-gg0.tspi = 1;
+gg0.mask = exptmask;
 [logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params (if desired)
+fprintf('Initial value of negative log-li (GLM): %.3f\n', logli0);
 
 % Do ML estimation of model params
 opts = {'display', 'iter', 'maxiter', 100};
-[gg1, negloglival] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
+[gg1, negloglival1a] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 
 %% 5. Fit GLM ("bilinear stim filter version") via max likelihood
 
 %  Initialize params for fitting --------------
 Filter_rank = 1; % Number of column/row vector pairs to use
-gg0 = makeFittingStruct_GLMbi(sta,Filter_rank,DTsim);
+gg0 = makeFittingStruct_GLMbi(sta,DTsim,Filter_rank);
 gg0.tsp = tsp;
-gg0.tspi = 1;
-[logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params
-
+gg0.mask = exptmask;
+[logli1,rr1,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params
+fprintf('Initial value of negative log-li (GLMbi): %.3f\n', logli1);
 
 % Do ML estimation of model params
-opts = {'display', 'iter', 'maxiter', 100};
-[gg2, negloglival] = MLfit_GLMbi(gg0,Stim,opts); % find ML estimate
+opts = {'display', 'iter', 'maxiter', 500};
+[gg2, negloglival2] = MLfit_GLMbi(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 
 %% 6. Plot results ====================
-figure(3);
+%figure(3);
 
 subplot(231);  % True filter  % ---------------
 imagesc(ggsim.k); colormap gray;
@@ -171,7 +176,7 @@ ylabel('time');
 
 subplot(233); % sta-projection % ---------------
 imagesc(gg0.k)
-title('projected STA');
+title('low-rank STA');
 
 subplot(234); % estimated filter % ---------------
 imagesc(gg1.k) 
@@ -182,11 +187,10 @@ imagesc(gg2.k)
 title('ML estimate: bilinear filter'); xlabel('space'); 
 
 subplot(236); % ----------------------------------
-plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ih),...
-    gg2.iht, exp(gg2.ihbas*gg2.ih));
-title('post-spike filter');
-legend('true','full GLM','bilinear GLM');
-box off; set(gca,'tickdir','out');axis tight;
+plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ihw),'b',...
+    gg2.iht, exp(gg2.ihbas*gg2.ihw), 'r');
+title('post-spike kernel');
+axis tight;
 
 % Errors in STA and ML estimate
 ktmu = normalizecols([mean(ggsim.k,2),mean(gg1.k,2),mean(gg2.k,2)]);

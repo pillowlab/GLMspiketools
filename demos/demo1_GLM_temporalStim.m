@@ -1,7 +1,7 @@
-% demo1_GLM1neuron.m
+% demo1_GLM_temporalStim.m
 %
-% Test code for simulating and fitting a GLM with  1D (temporal) filter,
-% exponential nonlinearity 
+% Test code for simulating and fitting a single-neuron GLM with  1D
+% (temporal) filter with exponential nonlinearity 
 %
 % Code Blocks:  
 %   1. Set up model params
