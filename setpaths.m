@@ -16,6 +16,3 @@ addpath([basedir '/glmtools_misc/']);
 addpath([basedir '/glmtools_mex/']);
 addpath([basedir '/nlfuns/']);
 
-% Declare a global variable that will be used througout
-global RefreshRate;  % Stimulus frame rate (Hz)
-
