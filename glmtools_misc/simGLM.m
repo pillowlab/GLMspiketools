@@ -15,29 +15,28 @@ if ~isfield(glmprs, 'nlfun'),
     glmprs.nlfun = @exp;
 end
 
-upsampFactor = glmprs.dtStim/glmprs.dtSp; % number of spike bins per Stim bin
-assert(mod(upsampFactor,1) == 0, 'dtStim / dtSp must be an integer');
-
+upSampFactor = glmprs.dtStim/glmprs.dtSp; % number of spike bins per Stim bin
+assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
 
 % Run "simple" or "coupled" simulation code
 if size(glmprs.k,3) > 1  % Run "coupled" GLM model if multiple cells present
     if nargout <= 2
-        [tsp,Vmem] = simGLMcpl(glmprs,Stim,upsampFactor);
+        [tsp,Vmem] = simGLMcpl(glmprs,Stim,upSampFactor);
     else
-        [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upsampFactor);
+        [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor);
     end
 
 else   % Single cell simulation
     if nargout <= 2
-        [tsp,Vmem] = simGLMsingle(glmprs,Stim,upsampFactor);
+        [tsp,Vmem] = simGLMsingle(glmprs,Stim,upSampFactor);
     else
-        [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upsampFactor);
+        [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor);
     end
 end
 
 
 % ======================================================================
-function [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upsampFactor)
+function [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor)
 % Sub-function within simGLM.m
 % Simulates the GLM point process model for a single (uncoupled) neuron
 % using time-rescaling
@@ -47,11 +46,11 @@ nbinsPerEval = 100;  % Default number of bins to update for each spike
 dt = glmprs.dtSp; % bin size for simulation
 
 slen = size(Stim,1); % length of stimulus
-rlen = slen*upsampFactor;  % length of binned spike response
+rlen = slen*upSampFactor;  % length of binned spike response
 
 % -------------  Compute filtered resp to signal ----------------
 Istm = sameconv(Stim,glmprs.k);  % filter stimulus with k
-Vmem = reshape(repmat(Istm',upsampFactor,1),rlen,[]) + glmprs.dc; % upsample stim current
+Vmem = kron(Istm,ones(upSampFactor,1)) + glmprs.dc; % upsample stim current
 
 % -------------- Compute interpolated h current ----------------------
 ih = glmprs.ih;
@@ -99,8 +98,8 @@ tsp = tsp(1:nsp); % prune extra entries, if necessary
 
 
 % ========================================================================
-function [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim);
-% [tsp, Vmem,Ispk] = simGLMcpl(glmprs,Stim);
+function [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
+% [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
 % 
 % Compute response of (multi-cell) coupled-glm to stimulus Stim.
 %
@@ -113,8 +112,6 @@ function [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim);
 % Sub-function within simGLM.m
 
 % --------------- Check Inputs ----------------------------------
-global RefreshRate;
-
 ncells = size(glmprs.k,3);
 nbinsPerEval = 100;  % Default number of bins to update for each spike
 dt = glmprs.dt;
@@ -124,7 +121,7 @@ if mod(1,dt) ~= 0
     fprintf(1, 'glmrunmod: reset dtsim = %.3f\n', dt);
 end
 slen = size(Stim,1); % length of stimulus
-rlen = round(slen/dt);  % length of binned response
+rlen = slen*upSampFactor;  % length of binned response
 
 % -------------  Compute filtered resp to signal ----------------
 Istm = zeros(slen,ncells);
@@ -132,7 +129,7 @@ for jj = 1:ncells
     Istm(:,jj) = sameconv(Stim,glmprs.k(:,:,jj));  % filter stimulus with k
 end
 % Compute finely sampled version
-Vmem = fastinterp2(Istm,round(1/dt)) + repmat(glmprs.dc,rlen,1);
+Vmem = kron(Istm,ones(upSampFactor,1)) + glmprs.dc; % upsample stim current
 
 % -------------- Compute interpolated h current ----------------------
 ih = reshape(interp_spikeFilt(glmprs.ih, glmprs.iht, dt),[],ncells,ncells);
