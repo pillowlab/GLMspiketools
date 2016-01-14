@@ -1,4 +1,4 @@
-function gg = makeFittingStruct_GLM_core(sta,DTsim,glmstruct,cellnum)
+function gg = makeFittingStruct_GLM_core(sta,dtStim,dtSp,glmstruct,cellnum)
 % gg = makeFittingStruct_GLM_core(sta,DTsim,glmstruct,cellnum)
 %
 %  Core common to both makeFittingStruct_GLM and makeFittingStruct_GLMbi
@@ -23,7 +23,8 @@ gg.ktbasprs = [];
 gg.nlfun = @expfun; % default nonlinearity: exponential
 gg.tsp = [];
 gg.mask = [];
-gg.dt = DTsim;
+gg.dtStim = dtStim;
+gg.dtSp = dtSp;
 gg.ihw2 = [];
 gg.ihbas2 = [];
 gg.ihbasprs2 = [];
@@ -45,10 +46,10 @@ gg.ktbasprs = ktbasprs;
 % Make default basis for post-spike filter
 
 ihbasprs.ncols = 5;  % Number of basis vectors for post-spike kernel
-ihbasprs.hpeaks = [0 max(DTsim*10,4)];  % Peak location for first and last vectors
+ihbasprs.hpeaks = [0 max(dtSp*10,4)];  % Peak location for first and last vectors
 ihbasprs.b = 1;  % How nonlinear to make spacings
 ihbasprs.absref = []; % absolute refractory period (optional)
-[iht,ihbas,ihbasis] = makeBasis_PostSpike(ihbasprs,DTsim);
+[iht,ihbas] = makeBasis_PostSpike(ihbasprs,dtSp);
 gg.iht = iht;
 gg.ihbas = ihbas;
 gg.ihbasprs = ihbasprs;
@@ -69,12 +70,12 @@ if (nargin >= 3)
     else
         if isfield(glmstruct, 'ihbasprs')
             ihbasprs = glmstruct.ihbasprs;
-            [iht,ihbas] = makeBasis_PostSpike(ihbasprs,DTsim);
+            [iht,ihbas] = makeBasis_PostSpike(ihbasprs,dtSp);
         end
         % Check for separate coupling basis params
         if isfield(glmstruct, 'ihbasprs2');
             ihbasprs2 = glmstruct.ihbasprs2;
-            [iht,ihbas2] = makeBasis_PostSpike(ihbasprs2,DTsim,iht);
+            [~,ihbas2] = makeBasis_PostSpike(ihbasprs2,dtSp,iht);
         else
             ihbas2 = ihbas;
             ihbasprs2 = ihbasprs;

@@ -22,59 +22,62 @@ function [neglogli,rr,tt,Iinj,Istm,Ih,Icpl] = neglogli_GLM(gg,Stim)
 
 
 % variables for spike times and frame rate
-global RefreshRate SPNDS SPNDS2;
+% global RefreshRate SPNDS SPNDS2;
 
-initfit_SPNDS(gg);  % set SPNDS and SPNDS2
-
-% ---- Extract params from gg ---------------
+% ---- Extract params from glm struct ---------------
 k = gg.k;
 dc = gg.dc;
-dt = gg.dt;
+dt = gg.dtSp;  % time bin size for spikes
+upSampFactor = gg.dtStim/dt; % number of spike bins per Stim bin
+assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
+
 
 % ----  Compute filtered resp to stimulus -----------------------------
 I0 = sameconv(Stim,k);
-Iinj = fastinterp2(I0,round(1/dt)) + dc;
+Iinj = kron(I0,ones(upSampFactor,1)) + dc;
 rlen = length(Iinj);
 
 % -------------- Compute net h current --------------------------------
-if isempty(gg.ihw)
-    gg.ihbas = [];
-end
-if isempty(gg.ihw2);
-    gg.ihbas2 = [];
-end
+[spInds,spInd_cpld] = initfit_spikeInds(gg); % get spike bin indices
+
+% Check if post-spike filters are present
+if isempty(gg.ihw), gg.ihbas = []; end
+if isempty(gg.ihw2), gg.ihbas2 = []; end
+
+% Compute post-spike filter from basis and weights
 ih = [gg.ihbas*gg.ihw, gg.ihbas2*gg.ihw2]; % h current
-ih = interp_spikeFilt(ih,gg.iht,dt);   % interpolated h current
 nCoupled = length(gg.couplednums); % # cells coupled to this one
 
 if ~isempty(ih)
-    Iinj = Iinj + spikefilt_mex(SPNDS,ih(:,1),[1,rlen]);
+    % self-coupling filter
+    Iinj = Iinj + spikefilt_mex(spInds,ih(:,1),[1,rlen]);
+    % coupling filters from other neurons
     for j = 1:nCoupled
-            Iinj = Iinj + spikefilt_mex(SPNDS2{j},ih(:,j+1),[1,rlen]);
+            Iinj = Iinj + spikefilt_mex(spInd_cpld{j},ih(:,j+1),[1,rlen]);
     end
 end
 
 rr = gg.nlfun(Iinj);  % Conditional intensity
 [iiSpk,iiLi] = initfit_mask(gg.mask,dt,rlen);  % bins to use for likelihood calc
 
-% ---- Compute negative log-likelihood from conditional intensity ------
+% -- Compute negative log-likelihood from conditional intensity ------
 trm1 = -sum(log(rr(iiSpk)));  % Spiking term
-trm2 = sum(rr(iiLi))*dt/RefreshRate;  % non-spiking term
+trm2 = sum(rr(iiLi))*dt;  % non-spiking term
 neglogli = trm1 + trm2;
 
 
 % ======  OPTIONAL OUTPUT ARGS ===================================
 if nargout > 2 
-    tt = [dt:dt:size(Stim,1)]'/RefreshRate;  % time indices 
+    tt = (1:rlen)'*dt; % time indices 
 end
 
 if nargout > 4  % Return details of currents
-    Istm = fastinterp2(I0,round(1/dt)) + dc;
+    Istm = kron(I0,ones(upSampFactor,1)) + dc;
 end
 
 if nargout > 5
     if ~isempty(ih)
-        Ih = spikefilt_mex(SPNDS,ih(:,1),[1,rlen]);
+        Ih = spikefilt_mex(spInds,ih(:,1),[1,rlen]);
     else
         Ih = zeros(length(Iinj),1);
     end
@@ -84,7 +87,7 @@ if nargout > 6
     Icpl = zeros(length(Iinj),size(ih,2)-1);
     if ~isempty(ih)
         for j = 1:nCoupled
-            Icpl(:,j) = spikefilt_mex(SPNDS2{j},ih(:,j+1),[1,rlen]);
+            Icpl(:,j) = spikefilt_mex(spInd_cpld{j},ih(:,j+1),[1,rlen]);
         end
     end
 end

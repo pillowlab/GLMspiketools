@@ -54,7 +54,7 @@ Stim = randn(slen,swid);  % Gaussian white noise stimulus
 
 % ==== Make Figure: repeat responses ========
 %figure(2); 
-tt = [dtSp:dtSp:(slen*dtStim)]';
+tt = (dtSp:dtSp:(slen*dtStim))';
 subplot(221); %------------------------
 plot(1:slen, Stim, 'k', 'linewidth', 2); 
 title('GWN stimulus');
@@ -100,7 +100,7 @@ exptmask= [100 slen];  % data range to use for fitting
 
 % -----------
 % Make param object with "true" params
-ggTrue = makeFittingStruct_GLM(ggsim.k,dtSp,ggsim);
+ggTrue = makeFittingStruct_GLM(ggsim.k,dtStim,dtSp,ggsim);
 ggTrue.tsp = tsp;
 ggTrue.mask = exptmask;
 
