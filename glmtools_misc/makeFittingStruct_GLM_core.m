@@ -1,5 +1,5 @@
-function gg = makeFittingStruct_GLM_core(sta,dtStim,dtSp,glmstruct,cellnum)
-% gg = makeFittingStruct_GLM_core(sta,DTsim,glmstruct,cellnum)
+function gg = makeFittingStruct_GLM_core(sta,dtStim,dtSp)
+% gg = makeFittingStruct_GLM_core(sta,dtStim,dtSp)
 %
 %  Core common to both makeFittingStruct_GLM and makeFittingStruct_GLMbi
 %
@@ -56,57 +56,3 @@ gg.ihbasprs = ihbasprs;
 gg.ihw = zeros(size(ihbas,2),1);
 gg.ih = gg.ihbas*gg.ihw;  % Set ih to be the current value of ihbas*ihw
         
-% % ==================================================================
-% If full param struct passed in, match other params as well
-if (nargin >= 3) 
-    gg.iht = glmstruct.iht;
-
-    % Check for post-spike basis params & update if possible
-    if isempty(glmstruct.ih);
-        iht = [];
-        ih = [];
-        ihw = []; ihw2 = [];
-        ihbas = []; ihbas2=[];
-    else
-        if isfield(glmstruct, 'ihbasprs')
-            ihbasprs = glmstruct.ihbasprs;
-            [iht,ihbas] = makeBasis_PostSpike(ihbasprs,dtSp);
-        end
-        % Check for separate coupling basis params
-        if isfield(glmstruct, 'ihbasprs2');
-            ihbasprs2 = glmstruct.ihbasprs2;
-            [~,ihbas2] = makeBasis_PostSpike(ihbasprs2,dtSp,iht);
-        else
-            ihbas2 = ihbas;
-            ihbasprs2 = ihbasprs;
-        end
-    end
-    % Check whether structure is a single-neuron or multi-neuron structure
-    ncells = length(glmstruct.dc);
-    if (ncells==1)     % Single-neuron
-        gg.dc = glmstruct.dc;
-        
-        gg.ihbas = ihbas;
-        gg.ihw = gg.ihbas\glmstruct.ih;
-        gg.ihbasprs = ihbasprs;
-        gg.ih = gg.ihbas*gg.ihw;  % Set ih to be the current value of ihbas*ihw
-        
-    else  % multi-neuron structure
-        if (nargin == 3)  % Check that cellnum passed in 
-            fprintf('proper syntax: gg = makeFittingStruct_GLM_core(sta,DTsim,glmstruct,cellnum)\n');
-            error('multi-cell struct passed in, but cell number not specified');
-        end
-
-        % Set fields
-        gg.dc = glmstruct.dc(cellnum);
-        gg.ihbas = ihbas;
-        gg.ihbasprs = ihbasprs;
-        gg.ihw = gg.ihbas\glmstruct.ih(:,cellnum,cellnum);
-        
-        gg.couplednums = setdiff(1:ncells,cellnum);
-        gg.ihbas2 = ihbas2;
-        gg.ihbasprs2 = ihbasprs2;        
-        gg.ihw2 = gg.ihbas2\glmstruct.ih(:,gg.couplednums,cellnum);
-        gg.ih = [gg.ihbas*gg.ihw, gg.ihbas2*gg.ihw2]; % Set ih to be the current value of ihbas*ihw
-    end
-end

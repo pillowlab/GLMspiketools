@@ -93,18 +93,21 @@ Stim = round(rand(slen,swid))*2-1;  %  Run model on long, binary stimulus
 nsp = length(tsp);
 
 % Compute STA and use as initial guess for k
-sta0 = simpleSTC(Stim,tsp,nkt);
+sta0 = simpleSTC(Stim,tsp/dtStim,nkt);
 sta = reshape(sta0,nkt,[]);
 
-exptmask= [100 slen];  % data range to use for fitting
+exptmask= [100 slen]*dtStim;  % data range to use for fitting
 
 % -----------
 % Make param object with "true" params
-ggTrue = makeFittingStruct_GLM(ggsim.k,dtStim,dtSp,ggsim);
+nkbasis = 8; 
+lasthpeak = .1;
+nhbasis = 5;
+ggTrue = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,ggsim.k,nhbasis,lasthpeak);
 ggTrue.tsp = tsp;
 ggTrue.mask = exptmask;
 
-% Check that conditional intensity calc is correct 
+%% Check that conditional intensity calc is correct 
 % (if desired, compare rrT computed here with vmem computed above).
 [logliTrue, rrT,tt] = neglogli_GLM(ggTrue,Stim);
 subplot(211); plot(tt,vmem,tt,log(rrT));
@@ -116,13 +119,13 @@ title('difference');
 %% 4. Do ML fitting of params with simulated data %=====================
 
 %  Initialize params for fitting --------------
-gg0 = makeFittingStruct_GLM(sta,dtSp);  % projects sta into basis for fitting k
+gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,lasthpeak);
 gg0.tsp = tsp;  % Insert spikes into fitting struct
 gg0.mask = exptmask;
 [logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params (if desired)
 fprintf('Initial value of negative log-li: %.3f\n', logli0);
 
-% Do ML estimation of model params
+%% Do ML estimation of model params
 opts = {'display', 'iter', 'maxiter', 100}; 
 [gg, negloglival] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 

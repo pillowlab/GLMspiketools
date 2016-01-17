@@ -15,7 +15,7 @@ function bmask = initfit_mask(mask,dtSp,rlen)
 %  bmask [rlen x 1]: binary vector where (1 = use for LL), (0 = ignore).
 
 if isempty(mask)  % No mask
-    bmask = ones(rlen,1); % keep all indices
+    bmask = true(rlen,1); % keep all indices
 
 else 
     
@@ -30,8 +30,8 @@ else
     end
     
     % Generate mask
-    bmask = zeros(rlen,1);
+    bmask = false(rlen,1);
     for j = 1:size(mask,1)
-        bmask(mask(j,1):mask(j,2)) = 1;
+        bmask(mask(j,1):mask(j,2)) = true;
     end
 end

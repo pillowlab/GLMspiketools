@@ -20,10 +20,6 @@ function [neglogli,rr,tt,Iinj,Istm,Ih,Icpl] = neglogli_GLM(gg,Stim)
 %     Ih = net linear input from own spike-history
 %     Icpl = matrix of coupling current inputs 
 
-
-% variables for spike times and frame rate
-% global RefreshRate SPNDS SPNDS2;
-
 % ---- Extract params from glm struct ---------------
 k = gg.k;
 dc = gg.dc;
@@ -31,14 +27,13 @@ dt = gg.dtSp;  % time bin size for spikes
 upSampFactor = gg.dtStim/dt; % number of spike bins per Stim bin
 assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
 
-
 % ----  Compute filtered resp to stimulus -----------------------------
 I0 = sameconv(Stim,k);
 Iinj = kron(I0,ones(upSampFactor,1)) + dc;
 rlen = length(Iinj);
 
 % -------------- Compute net h current --------------------------------
-[spInds,spInd_cpld] = initfit_spikeInds(gg); % get spike bin indices
+[spInds,spInd2] = initfit_spikeInds(gg); % get spike bin indices
 
 % Check if post-spike filters are present
 if isempty(gg.ihw), gg.ihbas = []; end
@@ -53,16 +48,16 @@ if ~isempty(ih)
     Iinj = Iinj + spikefilt_mex(spInds,ih(:,1),[1,rlen]);
     % coupling filters from other neurons
     for j = 1:nCoupled
-            Iinj = Iinj + spikefilt_mex(spInd_cpld{j},ih(:,j+1),[1,rlen]);
+            Iinj = Iinj + spikefilt_mex(spInd2{j},ih(:,j+1),[1,rlen]);
     end
 end
 
 rr = gg.nlfun(Iinj);  % Conditional intensity
-[iiSpk,iiLi] = initfit_mask(gg.mask,dt,rlen);  % bins to use for likelihood calc
 
 % -- Compute negative log-likelihood from conditional intensity ------
-trm1 = -sum(log(rr(iiSpk)));  % Spiking term
-trm2 = sum(rr(iiLi))*dt;  % non-spiking term
+bmask = initfit_mask(gg.mask,dt,rlen);  % bins to use for likelihood calc
+trm1 = -sum(log(rr(bmask)));  % Spiking term
+trm2 = sum(rr(bmask))*dt;  % non-spiking term
 neglogli = trm1 + trm2;
 
 
@@ -87,7 +82,7 @@ if nargout > 6
     Icpl = zeros(length(Iinj),size(ih,2)-1);
     if ~isempty(ih)
         for j = 1:nCoupled
-            Icpl(:,j) = spikefilt_mex(spInd_cpld{j},ih(:,j+1),[1,rlen]);
+            Icpl(:,j) = spikefilt_mex(spInd2{j},ih(:,j+1),[1,rlen]);
         end
     end
 end
