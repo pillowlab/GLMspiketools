@@ -59,14 +59,13 @@ yrnge = nlin(hpeaks+b);        % nonlinearly transformed first & last bumps
 db = diff(yrnge)/(ncols-1);    % spacing between cosine bump peaks
 ctrs = yrnge(1):db:yrnge(2);   % centers (peak locations) for basis vectors
 mxt = invnl(yrnge(2)+2*db)-b;  % maximum time bin
-iht = [0:dt:mxt]';
+iht = (dt:dt:mxt)';
 nt = length(iht);        % number of points in iht
 ff = @(x,c,dc)(cos(max(-pi,min(pi,(x-c)*pi/dc/2)))+1)/2; % raised cosine basis vector
 ihbasis = ff(repmat(nlin(iht+b), 1, ncols), repmat(ctrs, nt, 1), db);
 
 % set first cosine basis vector bins (before 1st peak) to 1
-ii = find(iht<=hpeaks(1));
-ihbasis(ii,1) = 1;
+ihbasis(iht<=hpeaks(1),:) = 1;
 
 % create first basis vector as step-function for absolute refractory period
 if absref >= dt
@@ -76,10 +75,6 @@ if absref >= dt
     ihbasis(ii,:) = 0;
     ihbasis = [ih0,ihbasis];
 end
-
-% % Remove the first bin (time 0 after a spike)
-% iht = iht(2:end);
-% ihbasis = ihbasis(2:end,:);
 
 % compute orthogonalized basis
 ihbas = orth(ihbasis);  

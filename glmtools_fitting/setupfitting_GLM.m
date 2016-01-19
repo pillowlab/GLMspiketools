@@ -21,9 +21,9 @@ function [prs0,Xstruct] = setupfitting_GLM(gg, Stim)
 %
 % Initialize optimization param structure
 
-% ---- Create struct and make stimulus design matrix --------------------------------------------
+% ---- Create struct and make stimulus design matrix ---------------------
 if strcmp(gg.ktype, 'linear') % standard GLM
-    Xstruct = initfit_stimMatrix(gg,Stim);  % create design matrix structure
+    Xstruct = initfit_stimDesignMat(gg,Stim);  % create design matrix structure
     
     % extract parameter vector
     prs0 = [gg.kt(:); gg.dc; gg.ihw(:); gg.ihw2(:)];
@@ -38,14 +38,28 @@ else
     error('unknown filter type (allowed types are ''linear'' or ''bilinear'')');
 end
 
+% ---- Make spike-history design matrix -----------------------------------
+Xstruct = initfit_sphistDesignMat(gg,Xstruct); 
+
+
+
 % set nonlinearity
 Xstruct.nlfun = gg.nlfun;  
 
 % set spike indices
-[Xstruct.spInds,Xstruct.spInds2] = initfit_spikeInds(gg);  
+eps = 1e-6; % small number to make sure spikes not on a bin edge
+dt = gg.dtSp;  % time bin size
+ 
+% Cell's own spike times -----------------------
+spInds = ceil((gg.tsp-dt*eps)/dt);
 
-% set post-spike current terms
-initfit_spikeCurrents(gg,Xstruct); 
+% Spike times from coupled cells ---------------
+nCoupled = length(gg.tsp2);
+spInds2 = cell(nCoupled,1);
+for j = 1:nCoupled  
+    spInds2{j} = ceil((gg.tsp2{j}-dt*eps)/dt);
+end
+
 
 % compute mask (time bins to use for likelihood)
 initfit_mask(gg.mask,Xstruct.dt,Xstruct.rlen); 

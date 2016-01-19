@@ -1,5 +1,5 @@
-function Xstruct = initfit_spikeCurrents(gg,Xstruct)
-%  Xstruct = initfit_spikeCurrents(gg,Xstruct)
+function Xstruct = initfit_sphistDesignMat(gg,Xstruct)
+%  Xstruct = initfit_sphistDesignMat(gg,Xstruct)
 %
 %  Sets parameters relating to optimization of
 %  spike-filter terms in the point process GLM and inserts them into design
@@ -33,4 +33,14 @@ if (Xstruct.nh2 == 0) && (Xstruct.nh == 0)
     Xstruct.ihflag = 0;
 else
     Xstruct.ihflag = 1;
+end
+
+% ----------------------
+
+% ------ Construct design matrix ----------------------------
+Ih = zeros(ilen,nh+nh2*nCoupled);
+Ih(:,1:nh) = spikeconv_mex(SPNDS, OPRS.ihbas, iwin1);
+for jcpl = 1:nCoupled
+    Ih(:,nh+nh2*(jcpl-1)+1:nh+nh2*jcpl) = ...
+        spikeconv_mex(SPNDS2{jcpl}, OPRS.ihbas2, iwin1);
 end
