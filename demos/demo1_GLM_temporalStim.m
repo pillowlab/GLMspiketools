@@ -44,44 +44,42 @@ swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 Stim = rand(slen,swid)*2-1;  % Stimulate model to long, unif-random stimulus
 
 % Simulate model
-[tsp,Itot,Isp] = simGLM(ggsim,Stim);  % run model
+[tsp,sps,Itot,Isp] = simGLM(ggsim,Stim);  % run model
 
 % --- Make plot of first 0.5 seconds of data --------
 tlen = 0.5;
-ttstim = dtStim:dtStim:tlen;
+ttstim = dtStim:dtStim:tlen; iistim = 1:length(ttstim);
+ttspk = dtSp:dtSp:tlen; iispk = 1:length(ttspk);
+spinds = sps(iispk)>0;
 subplot(311); 
-plot(ttstim,Stim(1:length(ttstim)), tsp(tsp<tlen), 0, 'ko');
+plot(ttstim,Stim(iistim), tsp(tsp<=tlen), zeros(nnz(spinds),1), 'ko');
 title('stimulus and spike times');
 
-ttspk = dtSp:dtSp:tlen;
-iispk = 1:length(ttspk);
 subplot(312); 
 plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
 legend('k output', 'h output');
 ylabel('log intensity'); title('filter outputs');
 
 subplot(313);
-spinds = round(tsp(tsp<tlen)/dtSp);
-semilogy(ttspk,exp(Itot(iispk)),tsp(tsp<tlen), exp(Itot(spinds)), 'ko');
+semilogy(ttspk,exp(Itot(iispk)),ttspk(spinds), exp(Itot(spinds)), 'ko');
 ylabel('spike rate (sp/s)');xlabel('time (s)');
 title('conditional intensity');
 
 %% 4. Setup fitting params %===================================================
 
 % Compute STA and use as initial guess for k
-sps = binSpTimes(tsp,dtStim,slen*dtStim);  % bin spike times
-sta0 = simpleSTC(Stim,sps,nkt); % compute STA
+sta0 = simpleSTC(Stim,tsp,nkt); % compute STA
 sta = reshape(sta0,nkt,[]);
 
 % Set mask (if desired)
-exptmask= [100 slen]*dtStim;  % data range to use for fitting 
+exptmask= [50 slen]*dtStim;  % data range to use for fitting (in s).
 
 % Set params for fitting, including bases 
 nkbasis = 8;  % number of basis vectors for representing k
 nhbasis = 5;  % number of basis vectors for representing h
 hpeak = .1;   % time of peak of last basis vector for h
 gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,hpeak);
-gg0.tsp = tsp;  % Insert spikes into fitting struct
+gg0.sps = sps;  % Insert spike train into fitting struct
 gg0.mask = exptmask;
 
 % Compute conditional intensity at initial parameters 

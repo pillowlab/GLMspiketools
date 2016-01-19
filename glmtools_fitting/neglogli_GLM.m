@@ -25,15 +25,20 @@ k = gg.k;
 dc = gg.dc;
 dt = gg.dtSp;  % time bin size for spikes
 upSampFactor = gg.dtStim/dt; % number of spike bins per Stim bin
+slen = size(Stim,1);
+rlen = size(gg.sps,1);
+
+% Check that upSampFactor is an integer
 assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
+% Check factor relating size of stim and binned spike train
+assert(slen*upSampFactor==rlen,'Spike train length must be an even multiple of stim length');
 
 % ----  Compute filtered resp to stimulus -----------------------------
 I0 = sameconv(Stim,k);
 Iinj = kron(I0,ones(upSampFactor,1)) + dc;
-rlen = length(Iinj);
 
 % -------------- Compute net h current --------------------------------
-[spInds,spInd2] = initfit_spikeInds(gg); % get spike bin indices
+spInds = find(gg.sps);
 
 % Check if post-spike filters are present
 if isempty(gg.ihw), gg.ihbas = []; end
@@ -48,7 +53,7 @@ if ~isempty(ih)
     Iinj = Iinj + spikefilt_mex(spInds,ih(:,1),[1,rlen]);
     % coupling filters from other neurons
     for j = 1:nCoupled
-            Iinj = Iinj + spikefilt_mex(spInd2{j},ih(:,j+1),[1,rlen]);
+            Iinj = Iinj + spikefilt_mex(find(gg.sps2(:,j)),ih(:,j+1),[1,rlen]);
     end
 end
 

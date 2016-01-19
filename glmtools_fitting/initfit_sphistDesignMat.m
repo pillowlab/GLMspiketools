@@ -6,41 +6,47 @@ function Xstruct = initfit_sphistDesignMat(gg,Xstruct)
 %  matrix structure 'Xstruct'
 
 
-
-% --- Recurrent (self) post-spike filter -----------------
+% Determine number of parameters from self-coupling filter
 if ~isempty(gg.ihw), 
-    Xstruct.nh=size(gg.ihbas,2);
-    Xstruct.ihbas = gg.ihbas;
+    nh=size(gg.ihbas,2);
 else
-    Xstruct.nh=0;   % Number of basis vectors describing ih
-    Xstruct.ihbas = []; % Number of basis vectors describing ih
+    nh=0;   % Number of basis vectors describing ih
 end
 
-% --- Coupling Filters -----------------------------------
-Xstruct.ncpl = length(gg.couplednums); % Number of coupled cells
-
-% set basis for coupling filters
+% Determine number of coupled neurons and parameters from coupling filters
+nCoupled = length(gg.couplednums); % Number of coupled cells
 if ~isempty(gg.ihw2)  
-    Xstruct.nh2 = size(gg.ihbas2,2);  % # params describing coupling filters
-    Xstruct.ihbas2 = gg.ihbas2; % relevant basis
+    nh2 = size(gg.ihbas2,2);  % # params describing coupling filters
 else  % No coupling terms
-    Xstruct.nh2=0;
-    Xstruct.ihbas2 = []; % relevant basis
+    nh2=0;
 end
 
-% Flag for whether or not to worry about ih params
-if (Xstruct.nh2 == 0) && (Xstruct.nh == 0)
+% Set flag for whether or not to worry about any of ih params
+if (nh2 == 0) && (nh == 0)
     Xstruct.ihflag = 0;
 else
     Xstruct.ihflag = 1;
 end
 
-% ----------------------
+% Compute binned spike times 
+dt = gg.dtSp;  % time bin size
+Xstruct.spInds = find(gg.sps);
 
-% ------ Construct design matrix ----------------------------
-Ih = zeros(ilen,nh+nh2*nCoupled);
-Ih(:,1:nh) = spikeconv_mex(SPNDS, OPRS.ihbas, iwin1);
-for jcpl = 1:nCoupled
-    Ih(:,nh+nh2*(jcpl-1)+1:nh+nh2*jcpl) = ...
-        spikeconv_mex(SPNDS2{jcpl}, OPRS.ihbas2, iwin1);
+% Create space for design matrix
+Xsphist = zeros(Xstruct.rlen,nh+nh2*nCoupled);
+
+% Create design matrix columns for neuron's own spike-history
+twin = [1 Xstruct.rlen]; % time window for convolution (entire length)
+if nh>0
+    Xsphist(:,1:nh) = spikefilt_mex(Xstruct.spInds, gg.ihbas, twin);
 end
+
+% Create design matrix columns for input from coupled neurons
+for jcpl = 1:nCoupled
+    spInds_jcpl = find(gg.sps2(:,jcpl)); % spike times of coupled neuron
+    inds = nh+nh2*(jcpl-1)+1:nh+nh2*jcpl; % column indices
+    Xsphist(:,inds) = spikefilt_mex(spInds_jcpl,gg.ibas2,twin);
+end
+
+% Add to Xstruct
+Xstruct.Xsphist = Xsphist;

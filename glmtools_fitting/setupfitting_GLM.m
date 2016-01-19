@@ -41,25 +41,8 @@ end
 % ---- Make spike-history design matrix -----------------------------------
 Xstruct = initfit_sphistDesignMat(gg,Xstruct); 
 
-
-
 % set nonlinearity
 Xstruct.nlfun = gg.nlfun;  
-
-% set spike indices
-eps = 1e-6; % small number to make sure spikes not on a bin edge
-dt = gg.dtSp;  % time bin size
- 
-% Cell's own spike times -----------------------
-spInds = ceil((gg.tsp-dt*eps)/dt);
-
-% Spike times from coupled cells ---------------
-nCoupled = length(gg.tsp2);
-spInds2 = cell(nCoupled,1);
-for j = 1:nCoupled  
-    spInds2{j} = ceil((gg.tsp2{j}-dt*eps)/dt);
-end
-
 
 % compute mask (time bins to use for likelihood)
 initfit_mask(gg.mask,Xstruct.dt,Xstruct.rlen); 

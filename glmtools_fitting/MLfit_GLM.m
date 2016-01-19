@@ -14,8 +14,6 @@ function [gg,fval,H] = MLfit_GLM(gg,Stim,optimArgs)
 %     fval = negative log-likelihood at ML estimate
 %        H = Hessian of negative log-likelihood at ML estimate
 
-MAXSIZE  = 1e7;  % Maximum size matrix (product of dimensions) to hold in memory at once;
-
 % Set optimization parameters 
 if nargin > 2
     opts = optimset('Gradobj','on','Hessian','on', optimArgs{:});
@@ -24,7 +22,7 @@ else
 end
 
 % --- Create design matrix using bases and extract initial params from gg -------
-[prs0,Xstruct] = setupfitting_GLM(gg,Stim,MAXSIZE);
+[prs0,Xstruct] = setupfitting_GLM(gg,Stim);
 
 % minimize negative log likelihood --------------------
 [prs,fval] = fminunc(@(prs)Loss_GLM_logli(prs,Xstruct),prs0,opts);

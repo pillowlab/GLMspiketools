@@ -1,5 +1,5 @@
-function [tsp,Vmem,Ispk] = simGLM(glmprs,Stim)
-% [tsp, Vmem,Ispk] = simGLM(glmprs,Stim);
+function [tsp,sps,Vmem,Ispk] = simGLM(glmprs,Stim)
+% [tsp,sps,Vmem,Ispk] = simGLM(glmprs,Stim)
 % 
 % Compute response of glm to stimulus Stim.
 %
@@ -9,6 +9,18 @@ function [tsp,Vmem,Ispk] = simGLM(glmprs,Stim)
 % Dynamics:  Filters the Stimulus with glmprs.k, passes this through a
 % nonlinearity to obtain the point-process conditional intensity.  Add a
 % post-spike current to the linear input after every spike.
+%
+% Input: 
+%   glmprs - struct with GLM params, has fields 'k', 'h','dc' for params
+%              and 'dtStim', 'dtSp' for discrete time bin size for stimulus
+%              and spike train (in s).
+%     Stim - stimulus matrix, with time running vertically and each
+%              column corresponding to a different pixel / regressor.
+% Output:
+%   tsp - list of spike times (in s)
+%   sps - sparse binary matrix with spike times (at resolution dtSp).
+%  Vmem - summed filter outputs 
+%  Ispk - just the spike-history filter output
 
 % Check nonlinearity (default is exponential)
 if ~isfield(glmprs, 'nlfun'), 
@@ -21,23 +33,24 @@ assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
 % Run "simple" or "coupled" simulation code
 if size(glmprs.k,3) > 1  % Run "coupled" GLM model if multiple cells present
     if nargout <= 2
-        [tsp,Vmem] = simGLMcpl(glmprs,Stim,upSampFactor);
+        [tsp,sps,Vmem] = simGLMcpl(glmprs,Stim,upSampFactor);
     else
-        [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor);
+        [tsp,sps,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor);
     end
 
 else   % Single cell simulation
-    if nargout <= 2
-        [tsp,Vmem] = simGLMsingle(glmprs,Stim,upSampFactor);
+    if nargout <= 3
+        [tsp,sps,Vmem] = simGLMsingle(glmprs,Stim,upSampFactor);
     else
-        [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor);
+        [tsp,sps,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor);
     end
 end
 
 
 % ======================================================================
-function [tsp,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor)
+function [tsp,sps,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor)
 % Sub-function within simGLM.m
+%
 % Simulates the GLM point process model for a single (uncoupled) neuron
 % using time-rescaling
     
@@ -58,8 +71,8 @@ hlen = length(ih);
     
 % --------------- Set up simulation dynamics variables ---------------
 nsp = 0; % number of spikes
-tsp = zeros(round(slen/4),1);  % pre-allocate space for spike times
-if (nargout > 2), 
+sps = sparse(rlen,1); % sparse spike time matrix
+if (nargout == 4), 
     Ispk = Vmem*0;
 end
 jbin = 1; % current time bin
@@ -77,12 +90,12 @@ while jbin <= rlen
     else   % Spike!
         ispk = iinxt(find(rrcum>=tspnext, 1, 'first')); % time bin where spike occurred
         nsp = nsp+1;
-        tsp(nsp,1) = ispk*dt; % spike time
+        sps(ispk) = 1; % spike time
         mxi = min(rlen, ispk+hlen); % max time affected by post-spike kernel
         iiPostSpk = ispk+1:mxi; % time bins affected by post-spike kernel
         if ~isempty(iiPostSpk)
             Vmem(iiPostSpk) = Vmem(iiPostSpk)+ih(1:mxi-ispk);
-            if nargout == 3  % Record post-spike current
+            if nargout == 4  % Record post-spike current
                 Ispk(iiPostSpk) = Ispk(iiPostSpk)+ih(1:mxi-ispk);
             end
         end
@@ -94,11 +107,10 @@ while jbin <= rlen
         nbinsPerEval = max(20, round(1.5*muISI)); 
     end
 end
-tsp = tsp(1:nsp); % prune extra entries, if necessary
-
+tsp = find(sps>0)*dt;
 
 % ========================================================================
-function [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
+function [tsp,sps,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
 % [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
 % 
 % Compute response of (multi-cell) coupled-glm to stimulus Stim.
@@ -137,7 +149,7 @@ ih = permute(ih,[1 3 2]);
 hlen = length(ih);
 
 % -------------  Static nonlinearity & spiking -------------------
-if nargout > 2
+if nargout == 4
     Ispk = Vmem*0;
 end
 
@@ -173,7 +185,7 @@ while jbin <= rlen
             tsp{icell}(nsp(icell),1) = ispk*dt;
             if ~isempty(iiPostSpk)
                 Vmem(iiPostSpk,:) = Vmem(iiPostSpk,:)+ih(1:mxi-ispk,:,icell);
-                if nargout == 3  % Record post-spike current
+                if nargout == 4  % Record post-spike current
                     Ispk(iiPostSpk,:)=Ispk(iiPostSpk,:)+ih(1:mxi-ispk,:,icell);
                 end
             end
