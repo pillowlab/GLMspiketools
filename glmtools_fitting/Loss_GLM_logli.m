@@ -28,7 +28,7 @@ dc = prs(nktot+1);
 ihprs = prs(nktot+2:end);
 
 % -------- Compute stim filter reponse -----------------------
-Istm = Xstruct.Xstim*kprs+dc;  % filtered stimulus
+Istm = Xstruct.Xstim*kprs + dc;  % filtered stimulus
 
 % -------- Compute net h filter response -----------------------
 if Xstruct.ihflag

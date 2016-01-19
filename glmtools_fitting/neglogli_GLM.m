@@ -62,9 +62,7 @@ rr = gg.nlfun(Iinj);  % Conditional intensity
 % -- Compute negative log-likelihood from conditional intensity ------
 bmask = initfit_mask(gg.mask,dt,rlen);  % bins to use for likelihood calc
 trm1 = sum(rr(bmask))*dt;  % non-spiking term
-
-rrsp = rr(bmask&(gg.sps(bmask)>0)); % conditional intensity during spikes
-trm2 = -sum(log(rrsp));  % Spiking term
+trm2 = -sum(log(rr(gg.sps(bmask)>0)));  % Spiking term
 neglogli = trm1 + trm2;
 
 
