@@ -27,14 +27,20 @@ kprs = prs(1:nktot);
 dc = prs(nktot+1);
 ihprs = prs(nktot+2:end);
 
+% Extract some other stuff we'll use a lot
+nup = Xstruct.upsampfactor; % upsamp factor
+Xstm = Xstruct.Xstim; % stimulus design matrix
+Xsp = Xstruct.Xsp;    % spike history design matrix
+spi = Xstruct.spInds; % spike indices
+
 % -------- Compute stim filter reponse -----------------------
-Istm = Xstruct.Xstim*kprs + dc;  % filtered stimulus
+Istm = Xstm*kprs + dc;  % filtered stimulus
 
 % -------- Compute net h filter response -----------------------
 if Xstruct.ihflag
-    Iinj = kron(Istm,ones(Xstruct.upsampfactor,1)) + Xstruct.Xsp*ihprs;
+    Iinj = kron(Istm,ones(nup,1)) + Xsp*ihprs;
 else
-    Iinj = kron(Istm,ones(Xstruct.upsampfactor,1));
+    Iinj = kron(Istm,ones(nup,1));
 end
 
 % ---------  Compute output of nonlinearity  ------------------------
@@ -49,23 +55,22 @@ logli = Trm1 + Trm2;
 if (nargout > 1)
     
     % Non-spiking terms
-    dLdk0 = ((drr'*MM)*SS)';
+    dLdk0 = (sum(reshape(drr,nup,[]))*Xstm)';
     dLdb0 = sum(drr);
+    if Xstruct.ihflag  % if Ih current present
+        dLdh0 = (drr'*Xsp)';
+    end
+    
+    % Spiking terms
+    MMsp = MM(i_sp,:);
+    
+    frac1 = drr(i_sp)./rr(i_sp);
+    dLdk1 = ((frac1'*MMsp)*SS)';
+    dLdb1 = sum(frac1);
     if Xstruct.ihflag
-        dLdh0 = (drr'*Ih)';
+        dLdh1 = (frac1'*Ih(i_sp,:))';
     end
-    if spflag
-        MMsp = MM(i_sp,:);
-        %isprel = i_sp+ii(1)-1;
-        frac1 = drr(i_sp)./rr(i_sp);
-        dLdk1 = ((frac1'*MMsp)*SS)';
-        dLdb1 = sum(frac1);
-        if Xstruct.ihflag
-            dLdh1 = (frac1'*Ih(i_sp,:))';
-        end
-    else
-        dLdk1=0; dLdb1=0; dLdh1=0;
-    end
+
     dLdk = dLdk0*dt/RefreshRate - dLdk1;
     dLdb = dLdb0*dt/RefreshRate - dLdb1;
     if Xstruct.ihflag
