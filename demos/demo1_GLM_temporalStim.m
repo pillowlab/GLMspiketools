@@ -37,7 +37,7 @@ plot(ggsim.iht, ihbasis);  title('basis for h'); axis tight;
 
 
 %% 2. Make some training data  %========================================
-slen = 5000; % Stimulus length (frames); more samples gives better fit
+slen = 500; % Stimulus length (frames); more samples gives better fit
 swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 
 % Make stimulus
@@ -47,7 +47,7 @@ Stim = rand(slen,swid)*2-1;  % Stimulate model to long, unif-random stimulus
 [tsp,sps,Itot,Isp] = simGLM(ggsim,Stim);  % run model
 
 % --- Make plot of first 0.5 seconds of data --------
-tlen = 0.5;
+tlen = 0.25;
 ttstim = dtStim:dtStim:tlen; iistim = 1:length(ttstim);
 ttspk = dtSp:dtSp:tlen; iispk = 1:length(ttspk);
 spinds = sps(iispk)>0;
@@ -68,11 +68,11 @@ title('conditional intensity');
 %% 4. Setup fitting params %===================================================
 
 % Compute STA and use as initial guess for k
-sta0 = simpleSTC(Stim,tsp,nkt); % compute STA
+sta0 = simpleSTC(Stim,tsp/dtStim,nkt); % compute STA
 sta = reshape(sta0,nkt,[]);
 
 % Set mask (if desired)
-exptmask= [50 slen]*dtStim;  % data range to use for fitting (in s).
+exptmask= [dtSp slen*dtStim];  % data range to use for fitting (in s).
 
 % Set params for fitting, including bases 
 nkbasis = 8;  % number of basis vectors for representing k
@@ -81,10 +81,11 @@ hpeak = .1;   % time of peak of last basis vector for h
 gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,hpeak);
 gg0.sps = sps;  % Insert spike train into fitting struct
 gg0.mask = exptmask;
+gg0.ihw = randn(size(gg0.ihw))*1;
 
 % Compute conditional intensity at initial parameters 
-negloglival0 = neglogli_GLM(gg0,Stim);
-fprintf('Initial negative log-likelihood: %.2f\n', negloglival0);
+[negloglival0,rr] = neglogli_GLM(gg0,Stim);
+fprintf('Initial negative log-likelihood: %.5f\n', negloglival0);
 
 %% 4. Do ML fitting %=====================
 

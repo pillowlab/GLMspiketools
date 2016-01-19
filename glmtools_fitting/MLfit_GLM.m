@@ -24,6 +24,8 @@ end
 % --- Create design matrix using bases and extract initial params from gg -------
 [prs0,Xstruct] = setupfitting_GLM(gg,Stim);
 
+Loss_GLM_logli(prs0,Xstruct)
+
 % minimize negative log likelihood --------------------
 [prs,fval] = fminunc(@(prs)Loss_GLM_logli(prs,Xstruct),prs0,opts);
 

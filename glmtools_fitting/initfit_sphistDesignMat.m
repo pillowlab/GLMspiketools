@@ -29,24 +29,26 @@ else
 end
 
 % Compute binned spike times 
-dt = gg.dtSp;  % time bin size
 Xstruct.spInds = find(gg.sps);
 
 % Create space for design matrix
-Xsphist = zeros(Xstruct.rlen,nh+nh2*nCoupled);
+Xsp = zeros(Xstruct.rlen,nh+nh2*nCoupled);
 
 % Create design matrix columns for neuron's own spike-history
 twin = [1 Xstruct.rlen]; % time window for convolution (entire length)
 if nh>0
-    Xsphist(:,1:nh) = spikefilt_mex(Xstruct.spInds, gg.ihbas, twin);
+    Xsp(:,1:nh) = spikefilt_mex(Xstruct.spInds, gg.ihbas, twin);
 end
 
 % Create design matrix columns for input from coupled neurons
 for jcpl = 1:nCoupled
     spInds_jcpl = find(gg.sps2(:,jcpl)); % spike times of coupled neuron
     inds = nh+nh2*(jcpl-1)+1:nh+nh2*jcpl; % column indices
-    Xsphist(:,inds) = spikefilt_mex(spInds_jcpl,gg.ibas2,twin);
+    Xsp(:,inds) = spikefilt_mex(spInds_jcpl,gg.ibas2,twin);
 end
 
-% Add to Xstruct
-Xstruct.Xsphist = Xsphist;
+% ---- Set fields of Xstruct -------------------------------------
+Xstruct.nh = nh;
+Xstruct.nh2 = nh2;
+Xstruct.nCoupled = nCoupled;
+Xstruct.Xsp = Xsp;

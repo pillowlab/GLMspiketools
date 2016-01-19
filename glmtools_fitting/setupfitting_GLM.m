@@ -45,6 +45,6 @@ Xstruct = initfit_sphistDesignMat(gg,Xstruct);
 Xstruct.nlfun = gg.nlfun;  
 
 % compute mask (time bins to use for likelihood)
-initfit_mask(gg.mask,Xstruct.dt,Xstruct.rlen); 
+Xstruct.bmask = initfit_mask(gg.mask,Xstruct.dtSp,Xstruct.rlen); 
 
 

@@ -1,4 +1,4 @@
-function [logli, dL, H] = Loss_GLM_logli(prs,XX)
+function [logli, dL, H] = Loss_GLM_logli(prs,Xstruct)
 % [neglogli, dL, H] = Loss_GLM_logli(prs)
 %
 % Compute negative log-likelihood of data undr the GLM model
@@ -20,28 +20,19 @@ etol = 1e-100;  % fudge factor for avoiding log(0)
 
 % Extract some vals from Xstruct (Opt Prs);
 nktot = Xstruct.nkx*Xstruct.nkt;   % total # params for k
-nh = Xstruct.nh;             % # basis vectors for history current 
-nh2 = Xstruct.nh2;           % # basis vectors for coupling currents
-nCoupled = Xstruct.ncoupled; % number of neurons coupled to this one
-nhtot = nh+nh2*nCoupled;     % total # of params for history/coupling kernels
 dt = Xstruct.dtSp;           % absolute bin size for spike train (in sec)
 
 % Unpack GLM prs;
 kprs = prs(1:nktot);
 dc = prs(nktot+1);
 ihprs = prs(nktot+2:end);
-if length(ihprs)~= nhtot
-    error('Problem with number of params passed in (Loss_GLM_logli.m)');
-end
 
 % -------- Compute stim filter reponse -----------------------
-SS = Xstruct.MSTM(jwin(1)+1:jwin(2),:);  % Relevant stim
-MM = Xstruct.MMintrp(ii(1):ii(2),jj(1):jj(2)); % Interpolation filter for this chunk
 Istm = Xstruct.Xstim*kprs+dc;  % filtered stimulus
 
 % -------- Compute net h filter response -----------------------
 if Xstruct.ihflag
-    Iinj = kron(Istm,ones(Xstruct.upsampfactor,1)) + Xstruct.Xsp*hprs;
+    Iinj = kron(Istm,ones(Xstruct.upsampfactor,1)) + Xstruct.Xsp*ihprs;
 else
     Iinj = kron(Istm,ones(Xstruct.upsampfactor,1));
 end
@@ -50,7 +41,7 @@ end
 [rr,drr,ddrr] = Xstruct.nlfun(Iinj);
 
 % ---------  Compute log-likelihood ---------------------------------
-Trm1 = sum(rr)*dt/RefreshRate;  % non-spike term
+Trm1 = sum(rr)*Xstruct.dtSp;  % non-spike term
 Trm2 = -sum(log(rr(Xstruct.spInds))); % spike term
 logli = Trm1 + Trm2;
 

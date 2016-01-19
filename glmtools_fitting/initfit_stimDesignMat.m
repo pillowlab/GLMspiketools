@@ -1,5 +1,5 @@
-function Xstruct = initfit_stimMatrix(gg,Stim)
-% OPTprs = initfit_stimMatrix(gg,Stim)
+function Xstruct = initfit_stimDesignMat(gg,Stim)
+% Xstruct = initfit_stimDesignMat(gg,Stim)
 %  
 % Initialize parameters relating to stimulus design matrix 
 
@@ -25,10 +25,9 @@ for i = 1:nkx
     end
 end
 
-% ---- Set fields of OPTprs -------------------------------------
+% ---- Set fields of Xstruct -------------------------------------
 Xstruct.nkx = nkx;
 Xstruct.nkt = nkt;
-Xstruct.ktbas = gg.ktbas;
 Xstruct.slen = slen;  % Total stimulus length (course bins)
 Xstruct.rlen = rlen;
 Xstruct.upsampfactor = upsampfactor;
