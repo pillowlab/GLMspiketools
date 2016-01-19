@@ -9,6 +9,8 @@
 %   3. Make training data (for fitting params to data)
 %   4. Fit GLM params via maximum-likelihood (requires optimization toolbox)
 
+% Make sure paths are set (assumes this script called from 'demos' directory)
+cd ..; setpaths; cd demos/
 
 %% 1.  Set parameters and display for GLM % =============================
 
@@ -18,120 +20,82 @@ nkt = 30;    % Number of time bins in stimulus filter k
 ttk = dtStim*(-nkt+1:0)';  % time relative to spike of stim filter taps
 ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
 
-% === Make Fig: model params =======================
-%figure(1);  
-subplot(2,2,1);
-plot(ttk, ggsim.k);
-title('stimulus kernel');
-xlabel('time (s)');
+% === Plot true model params =======================
+clf;
+subplot(221);plot(ttk, ggsim.k);
+title('stimulus kernel'); xlabel('time (s)');
 
-subplot(2,2,2); % --------
-[iht,ihbasOrthog,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,dtSp);
-plot(ggsim.iht, ihbasis); 
-title('basis for h'); axis tight;
-
-subplot(2,2,3); % --------
-plot(ggsim.iht, exp(ggsim.iht*0), 'k--', ggsim.iht, exp(ggsim.ih));
-title('exponentiated h');
-xlabel('time after spike (s)');
-ylabel('gain'); axis tight;
-
-subplot(2,2,4); % --------
+subplot(222); % --------
 plot(ggsim.iht, ggsim.iht*0, 'k--', ggsim.iht, ggsim.ih);
 title('post-spike kernel h'); axis tight;
 xlabel('time after spike (s)');
 set(gca, 'ylim',[min(ggsim.ih)*1.1 max(ggsim.ih)*1.5]);
 
+subplot(224); % --------
+[iht,ihbasOrthog,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,dtSp);
+plot(ggsim.iht, ihbasis);  title('basis for h'); axis tight;
 
 
+%% 2. Make some training data  %========================================
+slen = 5000; % Stimulus length (frames); more samples gives better fit
+swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 
-%% 2. Make GWN stimulus & simulate the glm model response. ===========
+% Make stimulus
+Stim = rand(slen,swid)*2-1;  % Stimulate model to long, unif-random stimulus
 
-slen = 50; % Stimulus length (frames) 
-swid = 1;  % Stimulus width  (pixels).  Must match # pixels in stim filter
-Stim = randn(slen,swid);  % Gaussian white noise stimulus
-[tsp, vmem,Ispk] = simGLM(ggsim, Stim);  % Simulate GLM response
+% Simulate model
+[tsp,Itot,Isp] = simGLM(ggsim,Stim);  % run model
 
-% ==== Make Figure: repeat responses ========
-%figure(2); 
-tt = (dtSp:dtSp:(slen*dtStim))';
-subplot(221); %------------------------
-plot(1:slen, Stim, 'k', 'linewidth', 2); 
-title('GWN stimulus');
-xlabel('time');
-axis tight;
+% --- Make plot of first 0.5 seconds of data --------
+tlen = 0.5;
+ttstim = dtStim:dtStim:tlen;
+subplot(311); 
+plot(ttstim,Stim(1:length(ttstim)), tsp(tsp<tlen), 0, 'ko');
+title('stimulus and spike times');
 
-subplot(222); %------------------------
-if ~isempty(tsp)
-    plot(tt, vmem, tsp, max(vmem)*ones(size(tsp)), 'r.');
-    title('net voltage (dots = spike times)');
-    axis([0 tt(end), min(vmem) max(vmem*1.01)]);
-end
+ttspk = dtSp:dtSp:tlen;
+iispk = 1:length(ttspk);
+subplot(312); 
+plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
+legend('k output', 'h output');
+ylabel('log intensity'); title('filter outputs');
 
-% -----Run a few repeat simulations ------
-nrpts = 5;        % number of repeats to draw
-subplot(223); %------------------------
-plot(tt, vmem-Ispk, tt, Ispk, 'r');
-title('stim (blue) and spike (red) -induced currents'); 
-axis tight;
-xlabel('time (frames)');
-subplot(224);
-for j = 1:nrpts;
-    [tsp1,vmem1] = simGLM(ggsim,Stim);
-    plot(tt,vmem1, 'color', rand(3,1)); hold on;
-end
-axis tight; hold off;
-title('repeated responses to same stim');
-xlabel('time (frames)');
+subplot(313);
+spinds = round(tsp(tsp<tlen)/dtSp);
+semilogy(ttspk,exp(Itot(iispk)),tsp(tsp<tlen), exp(Itot(spinds)), 'ko');
+ylabel('spike rate (sp/s)');xlabel('time (s)');
+title('conditional intensity');
 
-
-%% 3. Make some training data  %========================================
-slen = 5000; % Stimulus length (frames);  More samples gives better fit
-Stim = round(rand(slen,swid))*2-1;  %  Run model on long, binary stimulus
-
-[tsp,vmem,ispk] = simGLM(ggsim,Stim);  % run model
-nsp = length(tsp);
+%% 4. Setup fitting params %===================================================
 
 % Compute STA and use as initial guess for k
-sta0 = simpleSTC(Stim,tsp/dtStim,nkt);
+sps = binSpTimes(tsp,dtStim,slen*dtStim);  % bin spike times
+sta0 = simpleSTC(Stim,sps,nkt); % compute STA
 sta = reshape(sta0,nkt,[]);
 
-exptmask= [100 slen]*dtStim;  % data range to use for fitting
+% Set mask (if desired)
+exptmask= [100 slen]*dtStim;  % data range to use for fitting 
 
-% -----------
-% Make param object with "true" params
-nkbasis = 8; 
-lasthpeak = .1;
-nhbasis = 5;
-ggTrue = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,ggsim.k,nhbasis,lasthpeak);
-ggTrue.tsp = tsp;
-ggTrue.mask = exptmask;
-
-%% Check that conditional intensity calc is correct 
-% (if desired, compare rrT computed here with vmem computed above).
-[logliTrue, rrT,tt] = neglogli_GLM(ggTrue,Stim);
-subplot(211); plot(tt,vmem,tt,log(rrT));
-title('total filter output (computed 2 ways)');
-subplot(212); plot(tt,log(rrT)-vmem);
-title('difference');
-% -----------
-
-%% 4. Do ML fitting of params with simulated data %=====================
-
-%  Initialize params for fitting --------------
-gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,lasthpeak);
+% Set params for fitting, including bases 
+nkbasis = 8;  % number of basis vectors for representing k
+nhbasis = 5;  % number of basis vectors for representing h
+hpeak = .1;   % time of peak of last basis vector for h
+gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,hpeak);
 gg0.tsp = tsp;  % Insert spikes into fitting struct
 gg0.mask = exptmask;
-[logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params (if desired)
-fprintf('Initial value of negative log-li: %.3f\n', logli0);
 
-%% Do ML estimation of model params
-opts = {'display', 'iter', 'maxiter', 100}; 
+% Compute conditional intensity at initial parameters 
+negloglival0 = neglogli_GLM(gg0,Stim);
+fprintf('Initial negative log-likelihood: %.2f\n', negloglival0);
+
+%% 4. Do ML fitting %=====================
+
+opts = {'display', 'iter', 'maxiter', 100}; % options for fminunc
 [gg, negloglival] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 %% 5. Plot results ======================================================
-%figure(3);
-ttk = -nkt+1:0;
+
+ttk = -nkt+1:0; % time bins for stimulus filter
 subplot(221);  % True filter  % ---------------
 plot(ttk, ggsim.k, 'k', ttk, sta, ttk, gg.k, 'r');
 title('Stim filters');
