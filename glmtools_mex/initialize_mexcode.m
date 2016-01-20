@@ -2,7 +2,7 @@
 %
 % Compiles .c files in the mexcode subdirectory 
 
-func_names = {'fastinterp2', 'spikefilt_mex'}; % Function names to mex
+func_names = {'spikefilt_mex'}; % Function names to mex
 
 for j =1:length(func_names)
     if ~exist(func_names{j})
