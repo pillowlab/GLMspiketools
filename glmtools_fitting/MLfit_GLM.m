@@ -1,5 +1,5 @@
-function [gg,fval,H] = MLfit_GLM(gg,Stim,optimArgs)
-%  [ggnew,fval,H] = MLfit_GLM(gg,Stim,optimArgs)
+function [gg,fval,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
+%  [gg,fval,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
 % 
 %  Computes the ML estimate for GLM params, using grad and hessians.
 %  Assumes basis for temporal dimensions of stim filter
@@ -13,6 +13,7 @@ function [gg,fval,H] = MLfit_GLM(gg,Stim,optimArgs)
 %     ggnew = new param struct (with ML params);
 %     fval = negative log-likelihood at ML estimate
 %        H = Hessian of negative log-likelihood at ML estimate
+%  Xstruct = structure with design matrices for spike-hist and stim terms
 
 % Set optimization parameters 
 if nargin > 2
