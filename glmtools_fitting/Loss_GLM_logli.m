@@ -15,9 +15,6 @@ function [logli, dL, H] = Loss_GLM_logli(prs,Xstruct)
 %      dL = gradient with respect to prs
 %      H = hessian
 
-
-etol = 1e-100;  % fudge factor for avoiding log(0)
-
 % Extract some vals from Xstruct (Opt Prs);
 nktot = Xstruct.nkx*Xstruct.nkt;   % total # params for k
 dt = Xstruct.dtSp;           % absolute bin size for spike train (in sec)
@@ -28,106 +25,93 @@ dc = prs(nktot+1);
 ihprs = prs(nktot+2:end);
 
 % Extract some other stuff we'll use a lot
-nup = Xstruct.upsampfactor; % upsamp factor
-Xstm = Xstruct.Xstim; % stimulus design matrix
-Xsp = Xstruct.Xsp;    % spike history design matrix
-spi = Xstruct.spInds; % spike indices
+XXstm = Xstruct.Xstim; % stimulus design matrix
+XXsp = Xstruct.Xsp;    % spike history design matrix
+bsps = Xstruct.bsps;   % binary spike vector
+M = Xstruct.Minterp;   % matrix for interpolating from stimulus bins to spike train bins
+ihflag = Xstruct.ihflag;  % flag
 
 % -------- Compute stim filter reponse -----------------------
-Istm = Xstm*kprs + dc;  % filtered stimulus
+Istm = XXstm*kprs + dc;  % filtered stimulus
 
 % -------- Compute net h filter response -----------------------
 if Xstruct.ihflag
-    Iinj = kron(Istm,ones(nup,1)) + Xsp*ihprs;
+    Ih = XXsp*ihprs;
+    Itot = M*Istm + Ih;
 else
-    Iinj = kron(Istm,ones(nup,1));
+    Itot = M*Istm;
 end
 
 % ---------  Compute output of nonlinearity  ------------------------
-[rr,drr,ddrr] = Xstruct.nlfun(Iinj);
+[rr,drr,ddrr] = Xstruct.nlfun(Itot);
 
 % ---------  Compute log-likelihood ---------------------------------
 Trm1 = sum(rr)*Xstruct.dtSp;  % non-spike term
-Trm2 = -sum(log(rr(Xstruct.spInds))); % spike term
+Trm2 = -sum(log(rr(bsps))); % spike term
 logli = Trm1 + Trm2;
 
 % ---------  Compute Gradient -----------------
 if (nargout > 1)
     
-    % Non-spiking terms
-    dLdk0 = (sum(reshape(drr,nup,[]))*Xstm)';
+    % Non-spiking terms (Term 1)
+    dLdk0 = (drr'*M*XXstm)';
     dLdb0 = sum(drr);
-    if Xstruct.ihflag  % if Ih current present
-        dLdh0 = (drr'*Xsp)';
+    if ihflag, dLdh0 = (drr'*XXsp)'; 
     end
     
-    % Spiking terms
-    MMsp = MM(i_sp,:);
-    
-    frac1 = drr(i_sp)./rr(i_sp);
-    dLdk1 = ((frac1'*MMsp)*SS)';
+    % Spiking terms (Term 2)
+    Msp = M(bsps,:); % interpolation matrix just for spike bins
+    frac1 = drr(bsps)./rr(bsps);
+    dLdk1 = ((frac1'*Msp)*XXstm)';
     dLdb1 = sum(frac1);
-    if Xstruct.ihflag
-        dLdh1 = (frac1'*Ih(i_sp,:))';
+    if ihflag, dLdh1 = (frac1'*XXsp(bsps,:))';
     end
 
-    dLdk = dLdk0*dt/RefreshRate - dLdk1;
-    dLdb = dLdb0*dt/RefreshRate - dLdb1;
-    if Xstruct.ihflag
-        dLdh = dLdh0*dt/RefreshRate - dLdh1;
-    else
-        dLdh = [];
+    % Combine terms
+    dLdk = dLdk0*dt - dLdk1;
+    dLdb = dLdb0*dt - dLdb1;
+    if ihflag, dLdh = dLdh0*dt - dLdh1;
+    else dLdh = [];
     end
-    dL = dL + [dLdk; dLdb; dLdh];
+    dL = [dLdk; dLdb; dLdh];
     
 end
 
 % ---------  Compute Hessian -----------------
 if nargout > 2
-    ddrrdiag = spdiags(ddrr,0,ilen,ilen); % make diagonal matrix
-    ddqqIntrp = ddrrdiag*MM;  % multiply each row of MM by ddrr (faster than bsxfun!)
-    ddqq = MM'*ddqqIntrp;
-    %Hxx and Htt
-    Hk = (SS'*ddqq*SS)*dt/RefreshRate;
-    % Hb
-    Hb = sum(ddrr)*dt/RefreshRate;
-    % Hkb
-    sumqq = sum(ddqqIntrp,1);
-    Hkb = (sumqq*SS)'*dt/RefreshRate;
-    if Xstruct.ihflag
-        % Hh
-        Hh = (Ih'*(ddrrdiag*Ih))*dt/RefreshRate;
-        % Hhk
-        Hkh = ((Ih'*ddqqIntrp)*SS*dt/RefreshRate)';
-        % Hb
-        Hhb = (ddrr'*Ih)'*dt/RefreshRate;
+    
+    % --- Non-spiking terms -----
+    ddqqIntrp = bsxfun(@times,M,ddrr);  % multiply each row of M by ddrr
+    % k and b terms
+    Hk = (XXstm'*M'*ddqqIntrp*XXstm)*dt; % Hkk (k filter)
+    Hb = sum(ddrr)*dt;                   % Hbb (constant b)
+    Hkb = (sum(ddqqIntrp,1)*XXstm)'*dt;  % Hkb (cross-term)
+    if ihflag  % h terms
+        Hh = (XXsp'*(bsxfun(@times,XXsp,ddrr)))*dt;  % Hh (h filter)
+        Hkh = ((XXsp'*ddqqIntrp)*XXstm*dt)';         % Hhk (cross-term)
+        Hhb = (ddrr'*XXsp)'*dt;                      % Hhb (cross-term)
     else
-        Hkh = []; Hhb=[]; Hh=[];
+        Hkh=[]; Hhb=[]; Hh=[];
     end
-    if spflag  % -------  If spikes in window ------
-        frac2 = (rr(i_sp).*ddrr(i_sp) - drr(i_sp).^2)./rr(i_sp).^2;
-        fr2diag = spdiags(frac2,0,length(i_sp),length(i_sp));
-        fr2Interp = fr2diag*MMsp;
-        fr2ddqq = MMsp'*fr2Interp;
-        % Spiking terms, Hk
-        Hk= Hk - SS'*fr2ddqq*SS;
-        % Spiking term, const
-        Hb =  Hb-sum(frac2);
-        % Spiking term, k and const
-        sumfr2 = sum(fr2Interp,1);
-        Hb1 = sumfr2*SS;
-        Hkb = Hkb - Hb1';
-        if Xstruct.ihflag
-            Ihrrsp = fr2diag*Ih(i_sp,:);
-            Hh= Hh - Ih(i_sp,:)'*Ihrrsp;
-            % Const by h
-            Hhb1 = sum(Ihrrsp,1)';
-            Hhb = Hhb - Hhb1;
-            % k by h term
-            Hkh0 = Ih(i_sp,:)'*(fr2Interp*SS);
-            Hkh = Hkh-Hkh0';
-        end
+
+    % --- Add in spiking terms ----
+    frac2 = (rr(bsps).*ddrr(bsps) - drr(bsps).^2)./rr(bsps).^2; % needed weights from derivation of Hessian
+    fr2Interp = bsxfun(@times,Msp,frac2);  % rows of Msp re-weighted by these weights
+    % Spiking terms, k and b
+    Hk= Hk - XXstm'*Msp'*fr2Interp*XXstm; % Hkk (k filter)
+    Hb =  Hb-sum(frac2);           % Hbb (constant b)
+    Hb1 = sum(fr2Interp,1)*XXstm;  % Spiking term, k and const
+    Hkb = Hkb - Hb1';
+    if Xstruct.ihflag
+        XXrrsp = bsxfun(@times,XXsp(bsps,:),frac2);
+        Hh= Hh - XXsp(bsps,:)'*XXrrsp;
+        % Const by h
+        Hhb1 = sum(XXrrsp,1)';
+        Hhb = Hhb - Hhb1;
+        % k by h term
+        Hkh0 = XXsp(bsps,:)'*(fr2Interp*XXstm);
+        Hkh = Hkh-Hkh0';
     end
-    H = H + [[Hk Hkb Hkh]; [Hkb' Hb Hhb']; [Hkh' Hhb Hh]];
+    H = [[Hk Hkb Hkh]; [Hkb' Hb Hhb']; [Hkh' Hhb Hh]];
 end
 

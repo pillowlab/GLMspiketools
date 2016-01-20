@@ -37,7 +37,7 @@ plot(ggsim.iht, ihbasis);  title('basis for h'); axis tight;
 
 
 %% 2. Make some training data  %========================================
-slen = 500; % Stimulus length (frames); more samples gives better fit
+slen = 5000; % Stimulus length (frames); more samples gives better fit
 swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 
 % Make stimulus
@@ -72,16 +72,16 @@ sta0 = simpleSTC(Stim,tsp/dtStim,nkt); % compute STA
 sta = reshape(sta0,nkt,[]);
 
 % Set mask (if desired)
-exptmask= [dtSp slen*dtStim];  % data range to use for fitting (in s).
+exptmask= []; %[1 slen*dtStim];  % data range to use for fitting (in s).
 
 % Set params for fitting, including bases 
 nkbasis = 8;  % number of basis vectors for representing k
-nhbasis = 5;  % number of basis vectors for representing h
-hpeak = .1;   % time of peak of last basis vector for h
-gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta*.25,nhbasis,hpeak);
-gg0.sps = sps;  % Insert spike train into fitting struct
-gg0.mask = exptmask;
-gg0.ihw = randn(size(gg0.ihw))*1;
+nhbasis = 8;  % number of basis vectors for representing h
+hpeakFinal = .1;   % time of peak of last basis vector for h
+gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,nhbasis,hpeakFinal,sta);
+gg0.sps = sps;  % Insert binned spike train into fitting struct
+gg0.mask = exptmask; % insert mask (optional)
+gg0.ihw = randn(size(gg0.ihw))*1; % initialize spike-history weights randomly
 
 % Compute conditional intensity at initial parameters 
 [negloglival0,rr] = neglogli_GLM(gg0,Stim);
@@ -107,14 +107,14 @@ title('Normalized Stim filters');
 xlabel('time before spike (frames)');
 
 subplot(222); % ----------------------------------
-plot(ggsim.iht, ggsim.ih, gg.iht, gg.ih,'r');
+plot(ggsim.iht, ggsim.ih, gg.iht, gg.ih,'r', ggsim.iht, ggsim.iht*0, 'k--');
 title('post-spike kernel');
 axis tight;
 legend('h_{true}', 'h_{ML}', 'location', 'southeast');
 
 
 subplot(224); % ----------------------------------
-plot(ggsim.iht, exp(ggsim.ih), gg.iht, exp(gg.ih),'r');
+plot(ggsim.iht, exp(ggsim.ih), gg.iht, exp(gg.ih),'r', ggsim.iht,ggsim.iht*0+1,'k--');
 title('exponentiated post-spike kernel');
 xlabel('time since spike (frames)');
 ylabel('gain');

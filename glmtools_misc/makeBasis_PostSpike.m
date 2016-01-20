@@ -1,5 +1,5 @@
-function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0);
-% [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht);
+function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0)
+% [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht)
 %
 % Make nonlinearly stretched basis consisting of raised cosines
 % -------
@@ -63,9 +63,6 @@ iht = (dt:dt:mxt)';
 nt = length(iht);        % number of points in iht
 ff = @(x,c,dc)(cos(max(-pi,min(pi,(x-c)*pi/dc/2)))+1)/2; % raised cosine basis vector
 ihbasis = ff(repmat(nlin(iht+b), 1, ncols), repmat(ctrs, nt, 1), db);
-
-% set first cosine basis vector bins (before 1st peak) to 1
-ihbasis(iht<=hpeaks(1),:) = 1;
 
 % create first basis vector as step-function for absolute refractory period
 if absref >= dt

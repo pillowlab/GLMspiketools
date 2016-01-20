@@ -1,13 +1,7 @@
 function [prs0,Xstruct] = setupfitting_GLM(gg, Stim)
-%  prs0 = setupfitting_GLM(gg, Stim);
+%  [prs0,Xstruct] = setupfitting_GLM(gg, Stim)
 %
-%  Sets global variables for ML estimation of point process GLM model.
-%
-%  MSTM = Stimulus filtered by temporal filter basis, 
-%  SPNDS = spike indices (vector)
-%  SPNDS2 = spike indices of neighor cells (cell array of vectors)
-%  OPTprs = structure with optimization params
-%         (ihbas, ihbas2, kxbas, ktbas)
+%  Set initial parameters and build design matrix structure for GLM fitting
 %
 %  Inputs: 
 %     gg = glm param structure
@@ -16,9 +10,9 @@ function [prs0,Xstruct] = setupfitting_GLM(gg, Stim)
 %                     (Affects # of chunks used to compute likelihood)
 %  Output: 
 %     prs0 = initial parameters extracted from gg
-%     Regressors = struct with design matrix for stim and spike-history terms
+%     Xstruct = struct with design matrix for stim and spike-history terms
 
-%
+
 % Initialize optimization param structure
 
 % ---- Create struct and make stimulus design matrix ---------------------

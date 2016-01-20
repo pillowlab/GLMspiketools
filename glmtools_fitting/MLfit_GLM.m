@@ -27,23 +27,23 @@ end
 Loss_GLM_logli(prs0,Xstruct)
 
 % minimize negative log likelihood --------------------
-[prs,fval] = fminunc(@(prs)Loss_GLM_logli(prs,Xstruct),prs0,opts);
+lfunc = @(prs)Loss_GLM_logli(prs,Xstruct); % loss function
+[prsML,fval] = fminunc(lfunc,prs0,opts); % find ML estimate of params
 
 % Compute Hessian if desired
 if nargout > 2 
-    [fval,~,H] = Loss_GLM_logli(prs,Xstruct);
+    [fval,~,H] = Loss_GLM_logli(prsML,Xstruct);
 end
 
-
 % Put returned vals back into param structure ------
-gg = reinsertFitPrs_GLM(gg,prs);
+gg = reinsertFitPrs_GLM(gg,prsML,Xstruct);
 
 % %----------------------------------------------------
 % Optional debugging code
 % %----------------------------------------------------
 %
 % % ------ Check analytic gradients and Hessians -------
-%  HessCheck(@Loss_GLM_logli,prs0,opts);
+%  HessCheck(lfunc,prs0,opts);
 %  HessCheck_Elts(@Loss_GLM_logli, [1 12],prs0,opts);
 %  tic; [lival,J,H]=Loss_GLM_logli(prs0); toc;
 

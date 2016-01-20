@@ -17,7 +17,7 @@ if (nkx ~= swid)
     error('Mismatch between stim width and kernel width');
 end
 
-% ---- Filter stimulus with spatial and temporal bases -----
+% ---- Convolve stimulus with spatial and temporal bases -----
 Xstruct.Xstim = zeros(slen,ncols);
 for i = 1:nkx
     for j = 1:nkt
@@ -26,11 +26,12 @@ for i = 1:nkx
 end
 
 % ---- Set fields of Xstruct -------------------------------------
-Xstruct.nkx = nkx;
-Xstruct.nkt = nkt;
-Xstruct.slen = slen;  % Total stimulus length (course bins)
-Xstruct.rlen = rlen;
-Xstruct.upsampfactor = upsampfactor;
-Xstruct.dtStim = gg.dtStim;
-Xstruct.dtSp = gg.dtSp;
+Xstruct.nkx = nkx; % # stimulus spatial stimulus pixels 
+Xstruct.nkt = nkt; % # time bins in stim filter
+Xstruct.slen = slen;  % Total stimulus length (coarse bins)
+Xstruct.rlen = rlen;  % Total spike-train bins (fine bins)
+Xstruct.upsampfactor = upsampfactor; % rlen / slen
+Xstruct.Minterp = kron(speye(slen),ones(upsampfactor,1)); % rlen x slen matrix for upsampling and downsampling 
+Xstruct.dtStim = gg.dtStim; % time bin size for stimulus
+Xstruct.dtSp = gg.dtSp; % time bins size for spike train
 
