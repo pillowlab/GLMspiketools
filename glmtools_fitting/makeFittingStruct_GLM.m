@@ -28,14 +28,14 @@ gg.kt = [];       % basis weights for stimulus filter k
 gg.ktbas = [];    % temporal basis for stimulus filter k
 gg.ktbasprs = []; % parameters for basis for k-filter
 gg.nlfun = @expfun; % default nonlinearity: exponential
-gg.tsp = [];  % spike times (in s)
+gg.sps = [];  % spike times (in s)
 gg.mask = []; % list of intervals to ignore when computing likelihood
 gg.dtStim = dtStim;  % time bin size for stimulus 
 gg.dtSp = dtSp;      % time bin for spike train 
 gg.ihw2 = [];      % weights for coupling filters 
 gg.ihbas2 = [];    % basis for coupling filters
 gg.ihbasprs2 = []; % parameters for coupling filter basis 
-gg.tsp2 = [];      % spike times of coupled neurons
+gg.sps2 = [];      % spike times of coupled neurons
 gg.couplednums = []; % numbers of coupled cells
 
 % % ----- Set up temporal basis for stimulus kernel -----------
