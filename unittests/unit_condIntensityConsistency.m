@@ -15,7 +15,7 @@ slen = 5000; % Stimulus length (frames);  More samples gives better fit
 swid = 1;
 Stim = randn(slen,swid);  %  Run model on long, binary stimulus
 
-[tsp,vmem,ispk] = simGLM(ggsim,Stim);  % run model and return conditional intensity
+[tsp,sps,vmem,ispk] = simGLM(ggsim,Stim);  % run model and return conditional intensity
 nsp = length(tsp);
 
 %% 3. Make param object with "true" params ================================
@@ -24,7 +24,7 @@ ggTrue.k = ggsim.k;   % insert stimulus filter
 ggTrue.dc = ggsim.dc; % insert dc value
 ggTrue.ihw = ggsim.ih; % insert spike-history filter
 ggTrue.ihbas = speye(length(ggsim.ih));
-ggTrue.tsp = tsp; % spike times
+ggTrue.sps = sps; % spike times
 ggTrue.mask = [];
 
 %% 4. Compute intensity again (during computation of log-likelihood) ======
