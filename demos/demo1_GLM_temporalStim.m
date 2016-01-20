@@ -17,11 +17,11 @@ cd ..; setpaths; cd demos/
 dtStim = .01; % Bin size for stimulus (in seconds).  (Equiv to 100Hz frame rate)
 dtSp = .001;  % Bin size for simulating model & computing likelihood (must evenly divide dtStim);
 nkt = 30;    % Number of time bins in stimulus filter k
-ttk = dtStim*(-nkt+1:0)';  % time relative to spike of stim filter taps
 ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
 
 % === Plot true model params =======================
 clf;
+ttk = dtStim*(-nkt+1:0)';  % time relative to spike of stim filter taps
 subplot(221);plot(ttk, ggsim.k);
 title('stimulus kernel'); xlabel('time (s)');
 

@@ -11,20 +11,19 @@
 %   4. Fit traditional GLM via maximum-likelihood (ML)
 %   5. Fit GLM with bilinearly-parametrized filter ("GLMbi") via ML
 
-global RefreshRate;  % Stimulus refresh rate (Stim frames per second)
-RefreshRate = 100; 
 
 %% 1.  Set parameters and display for GLM ============= % 
 
-DTsim = .01; % Bin size for simulating model & computing likelihood.
-nkt = 15;  % Number of time bins in filter;
-ttk = [-nkt+1:0]';
-ggsim = makeSimStruct_GLM(nkt,DTsim);  % Create GLM struct with default params
+dtStim = .01; % Bin size for stimulus (in seconds).  (Equiv to 100Hz frame rate)
+dtSp = .001;  % Bin size for simulating model & computing likelihood (must evenly divide dtStim);
+nkt = 15;    % Number of time bins in stimulus filter k
+ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
 kt = ggsim.k;  % Temporal filter
 
 % Make a spatial filter;
 nkx = 10; 
-xxk = [1:1:nkx]';
+xxk = (1:1:nkx)'; % pixel locations
+ttk = dtStim*(-nkt+1:0)'; % time bins for filter
 kx = 1./sqrt(2*pi*4).*exp(-(xxk-nkx/2).^2/5);
 Filt = kt*kx'; % Make space-time separable filter
 ggsim.k = Filt./norm(Filt(:))*3; % Insert into simulation struct
@@ -52,7 +51,7 @@ title('post-spike kernel h');
 set(gca, 'xlim', ggsim.iht([1 end]),...
     'ylim',[min(ggsim.ih)*1.1 max(ggsim.ih)*1.5]);
 subplot(3,5,9:10); % -------------------------------------------
-[iht,ihbasOrthog,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,DTsim);
+[iht,ihbasOrthog,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,dtSp);
 plot(ggsim.iht, ihbasis);
 axis tight;
 xlabel('time after spike (frames)');
@@ -63,11 +62,11 @@ title('basis for h');
 slen = 50; % Stimulus length (frames) & width (# pixels)
 swid = size(ggsim.k,2);
 Stim = randn(slen,swid);  % Gaussian white noise stimulus
-[tsp, vmem,Ispk] = simGLM(ggsim, Stim);
+[tsp,sps,vmem,Ispk] = simGLM(ggsim, Stim);
 
 % ==== Make Figure ========
 %figure(2); 
-tt = [DTsim:DTsim:slen]';
+tt = (dtSp:dtSp:(dtStim*slen))';
 subplot(221); %------------------------
 imagesc(Stim'); 
 colormap gray; axis image;
@@ -111,7 +110,7 @@ exptmask= [50 slen];  % data range to use for fitting (eg, ignore first 50 bins)
 % Make param object with "true" params (if desired).
 % ---------------
 Filter_rank = 1;
-ggTrue = makeFittingStruct_GLMbi(ggsim.k,DTsim,Filter_rank,ggsim);
+ggTrue = makeFittingStruct_GLMbi(ggsim.k,dtSp,Filter_rank,ggsim);
 % Set true kernel in this struct (i.e. not represented by default basis).
 [u,s,v] = svd(ggsim.k);  
 ggTrue.k = ggsim.k;
@@ -136,7 +135,7 @@ title('difference');
 %% 4. Fit GLM (traditional version) via max likelihood
 
 %  Initialize params for fitting --------------
-gg0 = makeFittingStruct_GLM(sta,DTsim);
+gg0 = makeFittingStruct_GLM(sta,dtStim);
 gg0.tsp = tsp;
 gg0.mask = exptmask;
 [logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params (if desired)
@@ -151,7 +150,7 @@ opts = {'display', 'iter', 'maxiter', 100};
 
 %  Initialize params for fitting --------------
 Filter_rank = 1; % Number of column/row vector pairs to use
-gg0 = makeFittingStruct_GLMbi(sta,DTsim,Filter_rank);
+gg0 = makeFittingStruct_GLMbi(sta,dtSp,Filter_rank);
 gg0.tsp = tsp;
 gg0.mask = exptmask;
 [logli1,rr1,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params
