@@ -21,11 +21,16 @@ else
     opts = optimset('Gradobj','on','Hessian','on','display','iter');
 end
 
-% --- Create design matrix using bases and extract initial params from gg -------
+% --- Create design matrix extract initial params from gg ----------------
 [prs0,Xstruct] = setupfitting_GLM(gg,Stim);
 
-% minimize negative log likelihood --------------------
-lfunc = @(prs)Loss_GLM_logli(prs,Xstruct); % loss function
+% --- Set loss function --------------------------------------------------
+if isequal(Xstruct.nlfun,@expfun) || isequal(Xstruct.nlfun,@exp)
+    lfunc = @(prs)Loss_GLM_logli_exp(prs,Xstruct); % loss function for exponential nonlinearity
+else
+    lfunc = @(prs)Loss_GLM_logli(prs,Xstruct); % loss function for all other nonlinearities
+end
+% --- minimize negative log likelihood --------------------
 [prsML,fval] = fminunc(lfunc,prs0,opts); % find ML estimate of params
 
 % Compute Hessian if desired
