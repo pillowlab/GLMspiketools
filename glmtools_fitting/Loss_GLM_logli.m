@@ -30,6 +30,8 @@ XXsp = Xstruct.Xsp;    % spike history design matrix
 bsps = Xstruct.bsps;   % binary spike vector
 M = Xstruct.Minterp;   % matrix for interpolating from stimulus bins to spike train bins
 ihflag = Xstruct.ihflag;  % flag
+rlen = Xstruct.rlen;   % number of bins in spike train vector
+nsp = (sum(bsps));     % number of spikes
 
 % -------- Compute stim filter reponse -----------------------
 Istm = XXstm*kprs + dc;  % filtered stimulus
@@ -79,15 +81,21 @@ end
 
 % ---------  Compute Hessian -----------------
 if nargout > 2
-    
     % --- Non-spiking terms -----
-    ddqqIntrp = bsxfun(@times,M,ddrr);  % multiply each row of M by ddrr
+    
+    % multiply each row of M with drr
+    ddrrdiag = spdiags(ddrr,0,rlen,rlen); 
+    ddqqIntrp = ddrrdiag*M; % this is MUCH faster than using bsxfun, due to sparsity!
+
     % k and b terms
-    Hk = (XXstm'*M'*ddqqIntrp*XXstm)*dt; % Hkk (k filter)
+    Hk = (XXstm'*(M'*ddqqIntrp)*XXstm)*dt; % Hkk (k filter)
     Hb = sum(ddrr)*dt;                   % Hbb (constant b)
     Hkb = (sum(ddqqIntrp,1)*XXstm)'*dt;  % Hkb (cross-term)
     if ihflag  % h terms
         Hh = (XXsp'*(bsxfun(@times,XXsp,ddrr)))*dt;  % Hh (h filter)
+        % (here bsxfun is faster than diagonal multiplication)
+        
+        
         Hkh = ((XXsp'*ddqqIntrp)*XXstm*dt)';         % Hhk (cross-term)
         Hhb = (ddrr'*XXsp)'*dt;                      % Hhb (cross-term)
     else
@@ -96,9 +104,10 @@ if nargout > 2
 
     % --- Add in spiking terms ----
     frac2 = (rr(bsps).*ddrr(bsps) - drr(bsps).^2)./rr(bsps).^2; % needed weights from derivation of Hessian
-    fr2Interp = bsxfun(@times,Msp,frac2);  % rows of Msp re-weighted by these weights
+    fr2Interp = spdiags(frac2,0,nsp,nsp)*Msp; % rows of Msp re-weighted by these weights
+
     % Spiking terms, k and b
-    Hk= Hk - XXstm'*Msp'*fr2Interp*XXstm; % Hkk (k filter)
+    Hk= Hk - XXstm'*(Msp'*fr2Interp)*XXstm; % Hkk (k filter)
     Hb =  Hb-sum(frac2);           % Hbb (constant b)
     Hb1 = sum(fr2Interp,1)*XXstm;  % Spiking term, k and const
     Hkb = Hkb - Hb1';

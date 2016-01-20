@@ -37,7 +37,7 @@ plot(ggsim.iht, ihbasis);  title('basis for h'); axis tight;
 
 
 %% 2. Make some training data  %========================================
-slen = 5000; % Stimulus length (frames); more samples gives better fit
+slen = 50000; % Stimulus length (frames); more samples gives better fit
 swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 
 % Make stimulus
