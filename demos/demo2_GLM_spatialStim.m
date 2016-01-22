@@ -3,143 +3,97 @@
 % Test code for simulating and fitting the GLM with a 2D stimulus filter
 % (time x 1D space), with both traditional and bilinear parametrization
 % of the stimulus kernel.
-%
-% Code Blocks:  
-%   1. Set up model params and plot
-%   2. Show samples from simulated model
-%   3. Generate some training data 
-%   4. Fit traditional GLM via maximum-likelihood (ML)
-%   5. Fit GLM with bilinearly-parametrized filter ("GLMbi") via ML
+
+% Make sure paths are set (assumes this script called from 'demos' directory)
+cd ..; setpaths; cd demos/
 
 
 %% 1.  Set parameters and display for GLM ============= % 
 
 dtStim = .01; % Bin size for stimulus (in seconds).  (Equiv to 100Hz frame rate)
 dtSp = .001;  % Bin size for simulating model & computing likelihood (must evenly divide dtStim);
-nkt = 15;    % Number of time bins in stimulus filter k
-ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
-kt = ggsim.k;  % Temporal filter
+
+% Make a temporal filter
+nkt = 20;    % Number of time bins in stimulus filter k
+kt = (normpdf(1:nkt,3*nkt/4,1.5)-.5*normpdf(1:nkt,nkt/2,3))';
 
 % Make a spatial filter;
 nkx = 10; 
 xxk = (1:1:nkx)'; % pixel locations
 ttk = dtStim*(-nkt+1:0)'; % time bins for filter
 kx = 1./sqrt(2*pi*4).*exp(-(xxk-nkx/2).^2/5);
-Filt = kt*kx'; % Make space-time separable filter
-ggsim.k = Filt./norm(Filt(:))*3; % Insert into simulation struct
+k = kt*kx'; % Make space-time separable filter
+k = k./norm(k(:))*2;
 
-%figure(1);  % === Make Fig: model params =======================
-subplot(3,5,[1,6]); % ------------------------------------------
+% Insert into glm structure (created with default history filter)
+ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
+ggsim.k = k./norm(k(:))*3; % Insert into simulation struct
+
+% === Make Fig: model params =======================
+clf; subplot(3,3,[1 4]); % ------------------------------------------
 plot(kt,ttk);  axis tight;
-set(gca, 'ydir', 'reverse');
-ylabel('time (frames)');
+set(gca, 'ydir', 'reverse'); ylabel('time (frames)');
 
-subplot(3,5,[2,3,7,8]); % --------------------------------------
+subplot(3,3,[2 3 5 6]); % --------------------------------------
 imagesc(xxk,ttk,ggsim.k); 
-colormap gray;
-axis off; 
+colormap gray; axis off; 
 title('stimulus kernel k');
 
-subplot(3,5,[12,13]); % ----------------------------------------
+subplot(3,3,8:9); % ----------------------------------------
 plot(xxk,kx); axis tight;
-set(gca, 'xlim', [.5 nkx+.5]);
-xlabel('space (pixels)');
+set(gca, 'xlim', [.5 nkx+.5]); xlabel('space (pixels)');
 
-subplot(3,5,4:5); % --------------------------------------------
-plot(ggsim.iht, ggsim.iht*0, 'k--', ggsim.iht, ggsim.ih); 
-title('post-spike kernel h');
-set(gca, 'xlim', ggsim.iht([1 end]),...
-    'ylim',[min(ggsim.ih)*1.1 max(ggsim.ih)*1.5]);
-subplot(3,5,9:10); % -------------------------------------------
-[iht,ihbasOrthog,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,dtSp);
-plot(ggsim.iht, ihbasis);
-axis tight;
-xlabel('time after spike (frames)');
-title('basis for h');
 
-%% 2. Make GWN stimulus & simulate the glm model response. ========= %
-
-slen = 50; % Stimulus length (frames) & width (# pixels)
-swid = size(ggsim.k,2);
-Stim = randn(slen,swid);  % Gaussian white noise stimulus
-[tsp,sps,vmem,Ispk] = simGLM(ggsim, Stim);
-
-% ==== Make Figure ========
-%figure(2); 
-tt = (dtSp:dtSp:(dtStim*slen))';
-subplot(221); %------------------------
-imagesc(Stim'); 
-colormap gray; axis image;
-title('GWN stimulus');
-xlabel('time');
-ylabel('space');
-
-subplot(223); %------------------------
-plot(tt, vmem-Ispk, tt, Ispk, 'r', tsp, .1*ones(size(tsp)), 'r.');
-title('stim- and spike-induced currents'); axis tight;
-xlabel('time (frames)');
-subplot(222); %------------------------
-plot(tt, vmem, tsp, max(vmem)*ones(size(tsp)), 'ro');
-title('net voltage (dots = spike times)'); 
-axis tight;
-% -----Run repeat simulations ------
-nrpts = 5;        % number of repeats to draw
-subplot(224);
-for j = 1:nrpts;
-    [tsp1,vmem1] = simGLM(ggsim,Stim);
-    plot(tt,vmem1, 'color', rand(3,1)); hold on;
-end
-axis tight; hold off;
-title('repeat responses to same stim');
-xlabel('time (frames)');
-
-%% 3. Generate some training data ========================================
+%% 2. Generate some training data ========================================
 
 slen = 5000; % Stimulus length (frames);  More samples gives better fit
-Stim = round(rand(slen,swid))*2-1;  %  Run model on long, binary stimulus
-[tsp,vmem,ispk] = simGLM(ggsim,Stim);  % run model
+Stim = round(rand(slen,nkx))*2-1;  %  Run model on long, binary stimulus
+[tsp,sps,Itot,Isp] = simGLM(ggsim,Stim);  % run model
 nsp = length(tsp);
 
-% Compute STA and use as initial guess for k
-sta0 = simpleSTC(Stim,tsp,nkt);
-sta = reshape(sta0,nkt,[]);
+% --- Make plot of first 0.5 seconds of data --------
+tlen = 0.5;
+ttstim = dtStim:dtStim:tlen; iistim = 1:length(ttstim);
+ttspk = dtSp:dtSp:tlen; iispk = 1:length(ttspk);
+spinds = sps(iispk)>0;
+subplot(311); 
+imagesc([0 tlen], [1 nkx], Stim(iistim,:)'); 
+title('stimulus'); ylabel('pixel');
 
-exptmask= [50 slen];  % data range to use for fitting (eg, ignore first 50 bins)
+subplot(312);
+semilogy(ttspk,exp(Itot(iispk)),ttspk(spinds), exp(Itot(spinds)), 'ko');
+ylabel('spike rate (sp/s)');
+title('conditional intensity (and spikes)');
 
-% ---------------
-% Make param object with "true" params (if desired).
-% ---------------
-Filter_rank = 1;
-ggTrue = makeFittingStruct_GLMbi(ggsim.k,dtSp,Filter_rank,ggsim);
-% Set true kernel in this struct (i.e. not represented by default basis).
-[u,s,v] = svd(ggsim.k);  
-ggTrue.k = ggsim.k;
-ggTrue.ktbas = eye(nkt);
-ggTrue.kt = u(:,1);  
-ggTrue.kx = v(:,1)*s(1,1);
-% Insert spike times
-ggTrue.tsp = tsp;
-
-% ---------------
-% Check that conditional intensity calc is correct 
-% (if desired, compare to vmem returned by simGLM above)
-[logliTrue, rrTrue,tt] = neglogli_GLM(ggTrue,Stim);
-subplot(211); plot(tt,vmem,tt,log(rrTrue));
-title('total filter output (computed 2 ways)');
-subplot(212); plot(tt,log(rrTrue)-vmem);
-title('difference');
-
-% ---------------
+subplot(313); 
+plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
+legend('k output', 'h output'); xlabel('time (s)');
+ylabel('log intensity'); title('filter outputs');
 
 
-%% 4. Fit GLM (traditional version) via max likelihood
+
+%% 3. Fit GLM (traditional version) via max likelihood
+
+% Compute the STA
+sps_coarse = sum(reshape(sps,[],slen),1)'; % bin spikes in bins the size of stimulus
+sta0 = simpleSTC(Stim,sps_coarse,nkt); % Compute STA
+sta = reshape(sta0,nkt,[]); % reshape it to match dimensions of true filter
+
+exptmask= [];  % Not currently supported!
 
 %  Initialize params for fitting --------------
-gg0 = makeFittingStruct_GLM(sta,dtStim);
-gg0.tsp = tsp;
-gg0.mask = exptmask;
-[logli0,rr0,tt] = neglogli_GLM(gg0,Stim); % Compute logli of initial params (if desired)
-fprintf('Initial value of negative log-li (GLM): %.3f\n', logli0);
+% Set params for fitting, including bases 
+nkbasis = 8;  % number of basis vectors for representing k
+nhbasis = 8;  % number of basis vectors for representing h
+hpeakFinal = .1;   % time of peak of last basis vector for h
+gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,nhbasis,hpeakFinal,sta);
+gg0.sps = sps;  % Insert binned spike train into fitting struct
+gg0.mask = exptmask; % insert mask (optional)
+gg0.ihw = randn(size(gg0.ihw))*1; % initialize spike-history weights randomly
+
+% Compute conditional intensity at initial parameters 
+[negloglival0,rr] = neglogli_GLM(gg0,Stim);
+fprintf('Initial negative log-likelihood: %.5f\n', negloglival0);
 
 % Do ML estimation of model params
 opts = {'display', 'iter', 'maxiter', 100};

@@ -2,12 +2,6 @@
 %
 % Test code for simulating and fitting a single-neuron GLM with  1D
 % (temporal) filter with exponential nonlinearity 
-%
-% Code Blocks:  
-%   1. Set up model params
-%   2. Show simulated model responses to stimuli
-%   3. Make training data (for fitting params to data)
-%   4. Fit GLM params via maximum-likelihood (requires optimization toolbox)
 
 % Make sure paths are set (assumes this script called from 'demos' directory)
 cd ..; setpaths; cd demos/
@@ -49,27 +43,28 @@ Stim = rand(slen,swid)*2-1;  % Stimulate model to long, unif-random stimulus
 % --- Make plot of first 0.5 seconds of data --------
 tlen = 0.5;
 ttstim = dtStim:dtStim:tlen; iistim = 1:length(ttstim);
+subplot(311); 
+plot(ttstim,Stim(iistim));
+title('stimulus');
+
+subplot(312);
 ttspk = dtSp:dtSp:tlen; iispk = 1:length(ttspk);
 spinds = sps(iispk)>0;
-subplot(311); 
-plot(ttstim,Stim(iistim), tsp(tsp<=tlen), zeros(nnz(spinds),1), 'ko');
-title('stimulus and spike times');
-
-subplot(312); 
-plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
-legend('k output', 'h output');
-ylabel('log intensity'); title('filter outputs');
-
-subplot(313);
 semilogy(ttspk,exp(Itot(iispk)),ttspk(spinds), exp(Itot(spinds)), 'ko');
-ylabel('spike rate (sp/s)');xlabel('time (s)');
-title('conditional intensity');
+ylabel('spike rate (sp/s)');
+title('conditional intensity (and spikes)');
+
+subplot(313); 
+plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
+legend('k output', 'h output'); xlabel('time (s)');
+ylabel('log intensity'); title('filter outputs');
 
 %% 3. Setup fitting params %===================================================
 
-% Compute STA and use as initial guess for k
-sta0 = simpleSTC(Stim,tsp/dtStim,nkt); % compute STA
-sta = reshape(sta0,nkt,[]);
+% Compute the STA
+sps_coarse = sum(reshape(sps,[],slen),1)'; % bin spikes in bins the size of stimulus
+sta0 = simpleSTC(Stim,sps_coarse,nkt); % Compute STA
+sta = reshape(sta0,nkt,[]); % reshape it to match dimensions of true filter
 
 % Set mask (if desired)
 exptmask= []; %[1 slen*dtStim];  % data range to use for fitting (in s).
@@ -95,30 +90,25 @@ opts = {'display', 'iter', 'maxiter', 100}; % options for fminunc
 %% 5. Plot results ======================================================
 
 ttk = -nkt+1:0; % time bins for stimulus filter
-subplot(221);  % True filter  % ---------------
-plot(ttk, ggsim.k, 'k', ttk, sta, ttk, gg.k, 'r');
+
+subplot(221);  % True filter 
+plot(ttk, ggsim.k, 'k', ttk, sta./norm(sta)*norm(ggsim.k), ttk, gg.k, 'r');
 title('Stim filters');
 legend('k_{true}', 'k_{STA}', 'k_{ML}', 'location', 'northwest');
-
-subplot(223);
-flts = ([ggsim.k./norm(ggsim.k), sta, gg.k./norm(gg.k)]);
-plot(ttk, flts(:,1),'k', ttk,flts(:,2), ttk, flts(:,3), 'r');
-title('Normalized Stim filters');
-xlabel('time before spike (frames)');
-
-subplot(222); % ----------------------------------
+% ----------------------------------
+subplot(222); 
 plot(ggsim.iht, ggsim.ih, gg.iht, gg.ih,'r', ggsim.iht, ggsim.iht*0, 'k--');
 title('post-spike kernel');
 axis tight;
 legend('h_{true}', 'h_{ML}', 'location', 'southeast');
-
-
-subplot(224); % ----------------------------------
+% ----------------------------------
+subplot(224); 
 plot(ggsim.iht, exp(ggsim.ih), gg.iht, exp(gg.ih),'r', ggsim.iht,ggsim.iht*0+1,'k--');
-title('exponentiated post-spike kernel');
-xlabel('time since spike (frames)');
-ylabel('gain');
-axis tight;
+title('exponentiated post-spike kernels');
+xlabel('time since spike (s)');
+ylabel('gain'); axis tight;
+legend('h_{true}', 'h_{ML}', 'location', 'southeast');
 
-% Errors in STA and ML estimate
-Estim_Error = [subspace(flts(:,1),flts(:,2)), subspace(flts(:,1),flts(:,3))] % In radians
+% Errors in STA and ML estimate (subspace angle between true k and estimate)
+fprintf('Filter estimation error (in radians)\n  sta: %.3f\n   ML: %.3f\n', ...
+    subspace(flts(:,1),flts(:,2)), subspace(flts(:,1),flts(:,3)));
