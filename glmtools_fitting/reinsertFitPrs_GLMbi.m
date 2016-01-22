@@ -1,17 +1,15 @@
-function gg = reinsertFitPrs_GLMbi(gg,prs);
+function gg = reinsertFitPrs_GLMbi(gg,prs,Xstruct)
 % gg = reinsertFitPrs_GLMbi(gg,prs);
 %
 % After fitting, reinsert params into param structure
 
-global OPTprs
-
 % Put returned vals back into param structure ------
-krank = OPTprs.krank;
-nktprs = OPTprs.nkt*krank;
-nkxprs = OPTprs.nkx*krank;
+krank = Xstruct.krank;
+nktprs = Xstruct.nkt*krank;
+nkxprs = Xstruct.nkx*krank;
 nktot = nktprs+nkxprs;
-nh = OPTprs.nh; 
-nh2 = OPTprs.nh2;
+nh = Xstruct.nh; 
+nh2 = Xstruct.nh2;
 
 % Insert params into struct
 gg.kt = reshape(prs(1:nktprs),[],krank);

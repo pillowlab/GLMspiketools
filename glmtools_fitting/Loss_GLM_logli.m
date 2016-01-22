@@ -9,17 +9,16 @@ function [logli, dL, H] = Loss_GLM_logli(prs,Xstruct)
 % Inputs:
 %   prs = [kprs - weights for stimulus kernel
 %          dc   - dc current injection
-%          ihprs - weights on post-spike current];
+%          ihprs - weights on post-spike current]
+%
 % Outputs:
 %      logli = negative log likelihood of spike train
 %      dL = gradient with respect to prs
 %      H = hessian
 
-% Extract some vals from Xstruct (Opt Prs);
-nktot = Xstruct.nkx*Xstruct.nkt;   % total # params for k
-dt = Xstruct.dtSp;  % absolute bin size for spike train (in sec)
 
 % Unpack GLM prs;
+nktot = Xstruct.nkx*Xstruct.nkt;   % total # params for k
 kprs = prs(1:nktot);
 dc = prs(nktot+1);
 ihprs = prs(nktot+2:end);
@@ -32,6 +31,7 @@ M = Xstruct.Minterp;   % matrix for interpolating from stimulus bins to spike tr
 ihflag = Xstruct.ihflag;  % flag
 rlen = Xstruct.rlen;   % number of bins in spike train vector
 nsp = (sum(bsps));     % number of spikes
+dt = Xstruct.dtSp;  % absolute bin size for spike train (in sec)
 
 % -------- Compute sum of filter reponses -----------------------
 if Xstruct.ihflag
@@ -65,7 +65,7 @@ if (nargout > 1)
     if ihflag, dLdh1 = (frac1'*XXsp(bsps,:))';
     end
 
-    % Combine terms
+    % Combine Term 1 and Term 2
     dLdk = dLdk0*dt - dLdk1;
     dLdb = dLdb0*dt - dLdb1;
     if ihflag, dLdh = dLdh0*dt - dLdh1;

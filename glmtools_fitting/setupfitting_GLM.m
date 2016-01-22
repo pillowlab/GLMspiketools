@@ -23,7 +23,7 @@ if strcmp(gg.ktype, 'linear') % standard GLM
     prs0 = [gg.kt(:); gg.dc; gg.ihw(:); gg.ihw2(:)];
 
 elseif strcmp(gg.ktype, 'bilinear') % bilinearly-parametrized stim filter
-    Xstruct = initfit_stimMatrix_GLMbi(gg,Stim); % create design matrix structure
+    Xstruct = initfit_stimDesignMat_bi(gg,Stim); % create design matrix structure
 
     % extract parameter vector    
     prs0 = [gg.kt(:); gg.kx(:); gg.dc; gg.ihw(:); gg.ihw2(:)];

@@ -1,8 +1,8 @@
 function gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,k0,nhbasis,lasthpeak)
-% gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,nhbasis,lasthpeak,k0)
+% gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,k0,nhbasis,lasthpeak)
 %
-% Initialize parameter structure for fitting of GLM model,
-% normal parametrization of stim kernel
+% Initialize parameter structure for fitting GLM,
+% with normal parametrization of stim kernel
 %
 % Inputs:
 %      dtStim = bin size of stimulus (in s)

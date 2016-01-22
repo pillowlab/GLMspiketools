@@ -1,4 +1,4 @@
-function [gg, fval,H] = MLfit_GLMbi(gg,Stim,optimArgs);
+function [gg,fval,H,Xstruct] = MLfit_GLMbi(gg,Stim,optimArgs)
 %  [gg,fval,H] = MLfit_GLMbi(gg,Stim,optimArgs);
 % 
 %  Computes the ML estimate for GLM params, using grad and hessians.
@@ -12,10 +12,8 @@ function [gg, fval,H] = MLfit_GLMbi(gg,Stim,optimArgs);
 %  Outputs:
 %     ggnew = new param struct (with ML params);
 %     fval = negative log-likelihood at ML estimate
-%
-%  Created: April 08.  (from maxli_GLM)
-
-MAXSIZE  = 1e7;  % Maximum amount to be held in memory at once;
+%        H = Hessian of negative log-likelihood at ML estimate
+%  Xstruct = structure with design matrices for spike-hist and stim terms
 
 % Set optimization parameters 
 if nargin > 2
@@ -24,21 +22,28 @@ else
     opts = optimset('Gradobj','on','Hessian','on','display','iter');
 end
 
-% Set initial params ----------------------------------
-prs0 = setupfitting_GLM(gg,Stim,MAXSIZE);
+% --- Create design matrix extract initial params from gg ----------------
+[prs0,Xstruct] = setupfitting_GLM(gg,Stim);
 
 % minimize negative log likelihood
-[prs,fval] = fminunc(@Loss_GLMbi_logli,prs0,opts);
-if nargout > 2 % Compute Hessian at maximum 
+lfunc = @(prs)Loss_GLMbi_logli(prs,Xstruct); % loss function for exponential nonlinearity
+[prs,fval] = fminunc(lfunc,prs0,opts); % optimize negative log-likelihood for prs
+
+% Compute Hessian at maximum, if requested     
+if nargout > 2
     [fval,~,H] = Loss_GLMbi_logli(prs);
 end
 
 % Put returned vals back into param structure ------
-gg = reinsertFitPrs_GLMbi(gg,prs);
+gg = reinsertFitPrs_GLMbi(gg,prs,Xstruct);
 
-%----------------------------------------------------
+
+% %----------------------------------------------------
+% Optional debugging code
+% %----------------------------------------------------
+%
 % % ------ Check analytic gradients, Hessians -------
-% HessCheck(@Loss_GLMbi_logli,prs0,opts);
-% HessCheck_Elts(@Loss_GLMbi_logli, [1 12],prs0,opts);
-% tic; [lival,J,H]=Loss_GLMbi_logli(prs0); toc;
+% DerivCheck(lfunc,prs0,opts);
+% HessCheck_Elts(lfunc, [1 12],prs0,opts);
+% tic; [lival,J,H]=lfunc(prs0,Xstruct); toc;
 

@@ -49,5 +49,5 @@ gg = reinsertFitPrs_GLM(gg,prsML,Xstruct);
 % % ------ Check analytic gradients and Hessians -------
 %  HessCheck(lfunc,prs0,opts);
 %  HessCheck_Elts(@Loss_GLM_logli, [1 12],prs0,opts);
-%  tic; [lival,J,H]=Loss_GLM_logli(prs0); toc;
+%  tic; [lival,J,H]=lfunc(prs0); toc;
 
