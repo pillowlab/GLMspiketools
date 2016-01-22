@@ -12,7 +12,7 @@ function gg = makeFittingStruct_GLMbi(sta,DTsim,krank,varargin)
 
 % ====================================================================
 % Set up structure
-gg = makeFittingStruct_GLM_core(sta,DTsim,varargin{:}); 
+gg = makeFittingStruct_GLM(sta,DTsim,varargin{:}); 
 gg.kx = [];
 gg.kxbas=[]; 
 gg.kbasprs = [];

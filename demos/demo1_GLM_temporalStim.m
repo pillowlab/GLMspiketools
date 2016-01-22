@@ -73,7 +73,7 @@ exptmask= []; %[1 slen*dtStim];  % data range to use for fitting (in s).
 nkbasis = 8;  % number of basis vectors for representing k
 nhbasis = 8;  % number of basis vectors for representing h
 hpeakFinal = .1;   % time of peak of last basis vector for h
-gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,nhbasis,hpeakFinal,sta);
+gg0 = makeFittingStruct_GLM(dtStim,dtSp,nkt,nkbasis,sta,nhbasis,hpeakFinal);
 gg0.sps = sps;  % Insert binned spike train into fitting struct
 gg0.mask = exptmask; % insert mask (optional)
 gg0.ihw = randn(size(gg0.ihw))*1; % initialize spike-history weights randomly
@@ -85,25 +85,25 @@ fprintf('Initial negative log-likelihood: %.5f\n', negloglival0);
 %% 4. Do ML fitting %=====================
 
 opts = {'display', 'iter', 'maxiter', 100}; % options for fminunc
-[gg, negloglival] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
+[gg1, negloglival] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 %% 5. Plot results ======================================================
 
 ttk = -nkt+1:0; % time bins for stimulus filter
 
 subplot(221);  % True filter 
-plot(ttk, ggsim.k, 'k', ttk, sta./norm(sta)*norm(ggsim.k), ttk, gg.k, 'r');
+plot(ttk, ggsim.k, 'k', ttk, sta./norm(sta)*norm(ggsim.k), ttk, gg1.k, 'r');
 title('Stim filters');
 legend('k_{true}', 'k_{STA}', 'k_{ML}', 'location', 'northwest');
 % ----------------------------------
 subplot(222); 
-plot(ggsim.iht, ggsim.ih, gg.iht, gg.ih,'r', ggsim.iht, ggsim.iht*0, 'k--');
+plot(ggsim.iht, ggsim.ih, gg1.iht, gg1.ih,'r', ggsim.iht, ggsim.iht*0, 'k--');
 title('post-spike kernel');
 axis tight;
 legend('h_{true}', 'h_{ML}', 'location', 'southeast');
 % ----------------------------------
 subplot(224); 
-plot(ggsim.iht, exp(ggsim.ih), gg.iht, exp(gg.ih),'r', ggsim.iht,ggsim.iht*0+1,'k--');
+plot(ggsim.iht, exp(ggsim.ih), gg1.iht, exp(gg1.ih),'r', ggsim.iht,ggsim.iht*0+1,'k--');
 title('exponentiated post-spike kernels');
 xlabel('time since spike (s)');
 ylabel('gain'); axis tight;
@@ -111,4 +111,4 @@ legend('h_{true}', 'h_{ML}', 'location', 'southeast');
 
 % Errors in STA and ML estimate (subspace angle between true k and estimate)
 fprintf('Filter estimation error (in radians)\n  sta: %.3f\n   ML: %.3f\n', ...
-    subspace(flts(:,1),flts(:,2)), subspace(flts(:,1),flts(:,3)));
+    subspace(ggsim.k,sta), subspace(ggsim.k,gg1.k));

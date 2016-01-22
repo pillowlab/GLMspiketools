@@ -1,4 +1,4 @@
-function gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,nhbasis,lasthpeak,k0)
+function gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,k0,nhbasis,lasthpeak)
 % gg = makeFittingStruct_GLM(dtStim,dtSp,klength,nkbasis,nhbasis,lasthpeak,k0)
 %
 % Initialize parameter structure for fitting of GLM model,
@@ -52,14 +52,14 @@ if nargin > 2
     
 end
 
-if (nargin > 6) && (~isempty(k0))
+if (nargin > 4) && (~isempty(k0))
     % initialize k filter in this basis
     gg.kt = (gg.ktbas'*gg.ktbas)\(gg.ktbas'*k0);
     gg.k = gg.ktbas*gg.kt;
 end
 
 % ----- Set up basis for post-spike filter -----------------------
-if nargin > 4
+if nargin > 5
     ihbasprs.ncols = nhbasis;  % Number of basis vectors for post-spike kernel
     ihbasprs.hpeaks = [dtSp lasthpeak];  % Peak location for first and last vectors
     ihbasprs.b = lasthpeak/5;  % How nonlinear to make spacings (rough heuristic)
