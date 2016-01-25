@@ -64,6 +64,6 @@ are represented with 1ms precision, then `dtStim=.01` and `dtSp=.001`.
   design matrix that was more memory efficient (albeit slightly
   slower). If memory issues are a problem, due to large stimulus or
   coupling from many neurons, we suggest checking out version v1. (In
-  the shell: `git git checkout tags/v1`).  Note release v1 requires
+  the shell: `git checkout tags/v1`).  Note release v1 requires
   mex for compiling several functions written in C.
 
