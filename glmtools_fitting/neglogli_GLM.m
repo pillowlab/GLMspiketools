@@ -39,7 +39,6 @@ I0 = sameconv(Stim,k);
 Itot = kron(I0,ones(upsampfactor,1)) + dc;
 
 % -------------- Compute net h current --------------------------------
-spInds = find(gg.sps);
 
 % Check if post-spike filters are present
 if isempty(gg.ihw), gg.ihbas = []; end
@@ -48,9 +47,9 @@ if isempty(gg.ihw2), gg.ihbas2 = []; end
 % Compute convolution of post-spike filters with spike history
 nCoupled = length(gg.couplednums); % # cells coupled to this one
 if ~isempty(ih)
-    Itot = Itot + spikefilt_mex(spInds,ih(:,1),[1,rlen]);  % self-coupling filter
+    Itot = Itot + spikefilt(gg.sps,ih(:,1));  % self-coupling filter
     for j = 1:nCoupled   % coupling filters from other neurons
-            Itot = Itot + spikefilt_mex(find(gg.sps2(:,j)),ih(:,j+1),[1,rlen]);
+            Itot = Itot + spikefilt(gg.sps2(:,j),ih(:,j+1));
     end
 end
 
@@ -75,7 +74,7 @@ end
 % Spike-history filter output
 if nargout > 5
     Ih = zeros(length(Itot),1);
-    if ~isempty(ih), Ih = spikefilt_mex(spInds,ih(:,1),[1,rlen]);
+    if ~isempty(ih), Ih = spikefilt(gg.sps,ih(:,1));
     end
 end
 
@@ -84,7 +83,7 @@ if nargout > 6
     Icpl = zeros(length(Itot),size(ih,2)-1);
     if ~isempty(ih)
         for j = 1:nCoupled
-            Icpl(:,j) = spikefilt_mex(find(gg.sps2(:,j)),ih(:,j+1),[1,rlen]);
+            Icpl(:,j) = spikefilt(gg.sps2(:,j),ih(:,j+1));
         end
     end
 end

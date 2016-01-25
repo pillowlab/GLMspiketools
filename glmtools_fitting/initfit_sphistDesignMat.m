@@ -24,23 +24,21 @@ if (nh+nh2 == 0),  Xstruct.ihflag = false;
 else Xstruct.ihflag = 1;
 end
 
-% Compute vector binary (logical) spike times 
+% Vector of binary (0 or 1) spike counts
 Xstruct.bsps = sparse(gg.sps>0);
 
 % ---- Create Spike-history Design Matrix ------------------------
 Xsp = zeros(Xstruct.rlen,nh+nh2*nCoupled); % allocate
-twin = [1 Xstruct.rlen]; % time window for convolution (entire length)
 
 % Design matrix for self-coupling filter 
 if nh>0
-    Xsp(:,1:nh) = spikefilt_mex(find(Xstruct.bsps),gg.ihbas,twin);
+    Xsp(:,1:nh) = spikefilt(full(double(gg.sps>0)),gg.ihbas);
 end
 
-% Design matrix fo cross-coupling filters
+% Design matrix for cross-coupling filters
 for jcpl = 1:nCoupled
-    spInds_jcpl = find(gg.sps2(:,jcpl)); % spike times of coupled neuron
     inds = nh+nh2*(jcpl-1)+1:nh+nh2*jcpl; % column indices
-    Xsp(:,inds) = spikefilt_mex(spInds_jcpl,gg.ihbas2,twin); % insert into design matrix
+    Xsp(:,inds) = spikefilt(full(double(gg.sps2(:,jcpl))),gg.ihbas2); % insert into design matrix
 end
 
 % ---- Set fields of Xstruct -------------------------------------

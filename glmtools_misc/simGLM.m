@@ -18,7 +18,7 @@ function [tsp,sps,Itot,Istm] = simGLM(glmprs,Stim)
 %              column corresponding to a different pixel / regressor.
 % Output:
 %   tsp - list of spike times (in s)
-%   sps - sparse binary matrix with spike times (at resolution dtSp).
+%   sps - binary matrix with spike times (at resolution dtSp).
 %  Itot - summed filter outputs 
 %  Istm - just the spike-history filter output
 
@@ -60,7 +60,7 @@ Itot = Istm; % total filter output
     
 % --------------- Set up simulation dynamics variables ---------------
 nsp = 0; % number of spikes
-sps = logical(sparse(rlen,1)); % sparse spike time matrix
+sps = zeros(rlen,1); % sparse spike time matrix
 jbin = 1; % current time bin
 tspnext = exprnd(1);  % time of next spike (in rescaled time)
 rprev = 0;  % Integrated rescaled time up to current point
@@ -174,7 +174,7 @@ while jbin <= rlen
 end
 
 % Remove any extra bins from tsp and compute binned spike train 'sps'
-sps = logical(sparse(rlen,ncells));
+sps = zeros(rlen,ncells);
 for jj = 1:ncells
     tsp{jj} = tsp{jj}(1:nsp(jj));
     if ~isempty(tsp{jj})
