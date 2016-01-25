@@ -40,7 +40,7 @@ end
 for jcpl = 1:nCoupled
     spInds_jcpl = find(gg.sps2(:,jcpl)); % spike times of coupled neuron
     inds = nh+nh2*(jcpl-1)+1:nh+nh2*jcpl; % column indices
-    Xsp(:,inds) = spikefilt_mex(spInds_jcpl,gg.ihbas2,twin); % insert intdo design matrix
+    Xsp(:,inds) = spikefilt_mex(spInds_jcpl,gg.ihbas2,twin); % insert into design matrix
 end
 
 % ---- Set fields of Xstruct -------------------------------------
