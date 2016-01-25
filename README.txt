@@ -58,12 +58,12 @@ are represented with 1ms precision, then `dtStim=.01` and `dtSp=.001`.
 
 - fitting code relies on the matlab optimization toolbox function "fminunc".
 
-- An older release of this code (now sitting in branch 'old_v1') had
+- An older release of this code (now sitting in branch `old_v1`) had
   functionality that is no longer supported.  Namely: cubic spline
   parametrization of the nonlinearity, and a smart "chunking" of the
   design matrix that was more memory efficient (albeit slightly
   slower). If memory issues are a problem, due to large stimulus or
   coupling from many neurons, we suggest checking out version v1. (In
-  the shell: `git checkout old_v1`).  Note release v1 requires mex for
-  compiling several functions written in C.
+  the shell use`git checkout old_v1`, or download directly:
+  [GLMspiketools-old\_v1.zip](https://github.com/pillowlab/GLMspiketools/archive/old_v1.zip)).
 
