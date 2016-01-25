@@ -83,7 +83,7 @@ axis tight; xlabel('time (frames)');
 
 %% ===== 3. Generate some training data =============================== %%
 
-slen = 5000;  % Stimulus length (frames);  More samples gives better fit
+slen = 20000;  % Stimulus length (frames);  More samples gives better fit
 Stim = round(rand(slen,swid))-.5;  %  Run model on long, binary stimulus
 [tsp,sps,Itot,ispk] = simGLM(ggsim,Stim);  % run model
 
