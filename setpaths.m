@@ -11,12 +11,8 @@
 basedir = pwd;  % The directory where this script lives
 
 % Add a bunch sub-directories (with absoluate path names)
-addpath([basedir '/tools_mexcode/']);
-addpath([basedir '/tools_splines/']);
-addpath([basedir '/tools_misc/']);
-addpath([basedir '/GLMcode/']);
-addpath([basedir '/GLMcode/nlfuns/']);
-addpath([basedir '/testscripts/']);
+addpath([basedir '/glmtools_fitting/']);
+addpath([basedir '/glmtools_misc/']);
+addpath([basedir '/glmtools_mex/']);
+addpath([basedir '/nlfuns/']);
 
-% Declare a global variable that will be used througout
-global RefreshRate;  % Stimulus frame rate (Hz)
