@@ -19,48 +19,51 @@ effects and correlations between neurons.
 
 
 
-Installation
+Download
 ==========
 
-1. Download: clone the repository (```git clone git@github.com:pillowlab/GLMspiketools.git```) or
+1. Either clone the repository from github (```git clone git@github.com:pillowlab/GLMspiketools.git```) or
    [download as zip](https://github.com/pillowlab/GLMspiketools/archive/master.zip)
    and then unzip the archive.
-2. Launch matlab and cd into the main directory containing the code
-    (e.g. `cd  code/GLMspiketools/`).
-3. CD to the sub-directory `tools_mexcode` and run the initialization
-    script `initialize_mexcode` from the command line.  This will
-    compile the C files in the sub-directory `mexcode` using the
-    default compiler settings
 
-Use
+
+Basic Usage
 ===
 
-1. From the main code directory, run the `setpaths` script to add relevant
-    sub-directories to the matlab path and initialize the global variable "RefreshRate".
-2. Examine scripts in sub-directory `testscripts/` to see simple
-    examples of simulation and fitting to spike data using the code:
+1. From the main code directory (e.g., `~/Downloads/GLMspiketools/`), run the `setpaths` script to add relevant
+    sub-directories to the matlab path.
+2. Examine demo scripts in sub-directory `demos/` to see simple
+    scripts illustrating how to simulate and fit the GLM to spike
+    train data.
 
-**Test Scripts:**
 
-1. `testscript_GLM.m` - fits plain GLM (temporal stimulus kernel only).
-2. `testscript_GLM_coupled.m` - fits GLM with two coupled neurons.m
-3. `testscript_GLM_spatialStim.m` - fits GLM using two different parametrizations
-     of stimulus kernel (linear vs. bilinear) 
-4. `testscript_GLM_splineNlin.m` - fits GLM incorporating an arbitrary
-     nonlinearity parametrized by cubic splines.
-     - uses coordinate ascent of filter and nonlinearity params (not concave!)
-     - illustrates code for plotting spike rasters
+**Demo Scripts:**
+
+1. `demo1_GLM_temporalStim.m` - simulates and fits GLM  with 1D (purely temporal) stimulus.
+2. `demo2_GLM_spatialStim.m` - simulates and fits GLM  with 2D (space
+   x time) stimulus, and illustrates both linear and bilinear
+   parametrization of stimulus filter.
+3. `testscript_GLM_coupled.m` - simulates and fits GLM with two coupled neurons
 
 
 Notes
 =====
 
-- time is represented in units of "stimulus frames", which is
-controlled by the global variable RefreshRate (Hz).  Thus, for
-example, if RefreshRate=100, each unit of time is 10ms, and a
-post-spike kernel discretized in time bins of width dt=.02 has time
-bins of length 0.2 ms.
+- The code allows for two discretizations of time: `dtStim` specifies
+the size of time bins representing a single frame of the stimulus, and
+`dtSp` specifies the size of time bins for spikes (both in units of
+seconds).  The code requires `dtSp` to evenly divide `dtStim`. Thus,
+for example, if the stimulus has a refresh rate of 100 Hz and spikes
+are represented with 1ms precision, then `dtStim=.01` and `dtSp=.001`.
 
-- fitting code relies on the matlab optimization toolbox ("fminunc",
-"fmincon").
+- fitting code relies on the matlab optimization toolbox function "fminunc".
+
+- An older release of this code (tagged 'v1' on github) had
+  functionality that is no longer supported.  Namely: cubic spline
+  parametrization of the nonlinearity, and a smart "chunking" of the
+  design matrix that was more memory efficient (albeit slightly
+  slower). If memory issues are a problem, due to large stimulus or
+  coupling from many neurons, we suggest checking out version v1. (In
+  the shell: `git git checkout tags/v1`).  Note release v1 requires
+  mex for compiling several functions written in C.
 
