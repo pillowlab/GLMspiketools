@@ -1,5 +1,5 @@
-function [tsp,sps,Vmem,Ispk] = simGLM(glmprs,Stim)
-% [tsp,sps,Vmem,Ispk] = simGLM(glmprs,Stim)
+function [tsp,sps,Itot,Istm] = simGLM(glmprs,Stim)
+% [tsp,sps,Itot,Ispk] = simGLM(glmprs,Stim)
 % 
 % Compute response of glm to stimulus Stim.
 %
@@ -19,8 +19,8 @@ function [tsp,sps,Vmem,Ispk] = simGLM(glmprs,Stim)
 % Output:
 %   tsp - list of spike times (in s)
 %   sps - sparse binary matrix with spike times (at resolution dtSp).
-%  Vmem - summed filter outputs 
-%  Ispk - just the spike-history filter output
+%  Itot - summed filter outputs 
+%  Istm - just the spike-history filter output
 
 % Check nonlinearity (default is exponential)
 if ~isfield(glmprs, 'nlfun'), 
@@ -30,25 +30,16 @@ end
 upSampFactor = glmprs.dtStim/glmprs.dtSp; % number of spike bins per Stim bin
 assert(mod(upSampFactor,1) == 0, 'dtStim / dtSp must be an integer');
 
-% Run "simple" or "coupled" simulation code
+% Determine which version to run 
 if size(glmprs.k,3) > 1  % Run "coupled" GLM model if multiple cells present
-    if nargout <= 2
-        [tsp,sps,Vmem] = simGLMcpl(glmprs,Stim,upSampFactor);
-    else
-        [tsp,sps,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor);
-    end
-
+    [tsp,sps,Itot,Istm] = simGLMcpl(glmprs,Stim,upSampFactor);
 else   % Single cell simulation
-    if nargout <= 3
-        [tsp,sps,Vmem] = simGLMsingle(glmprs,Stim,upSampFactor);
-    else
-        [tsp,sps,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor);
-    end
+    [tsp,sps,Itot,Istm] = simGLMsingle(glmprs,Stim,upSampFactor);
 end
 
 
 % ======================================================================
-function [tsp,sps,Vmem,Ispk] = simGLMsingle(glmprs,Stim,upSampFactor)
+function [tsp,sps,Itot,Istm] = simGLMsingle(glmprs,Stim,upSampFactor)
 % Sub-function within simGLM.m
 %
 % Simulates the GLM point process model for a single (uncoupled) neuron
@@ -60,21 +51,16 @@ dt = glmprs.dtSp; % bin size for simulation
 
 slen = size(Stim,1); % length of stimulus
 rlen = slen*upSampFactor;  % length of binned spike response
+hlen = size(glmprs.ih,1); % length of post-spike filter
 
 % -------------  Compute filtered resp to signal ----------------
 Istm = sameconv(Stim,glmprs.k);  % filter stimulus with k
-Vmem = kron(Istm,ones(upSampFactor,1)) + glmprs.dc; % upsample stim current
-
-% -------------- Compute interpolated h current ----------------------
-ih = glmprs.ih;
-hlen = length(ih);
+Istm = kron(Istm,ones(upSampFactor,1)) + glmprs.dc; % upsample stim current
+Itot = Istm; % total filter output
     
 % --------------- Set up simulation dynamics variables ---------------
 nsp = 0; % number of spikes
-sps = sparse(rlen,1); % sparse spike time matrix
-if (nargout == 4), 
-    Ispk = Vmem*0;
-end
+sps = logical(sparse(rlen,1)); % sparse spike time matrix
 jbin = 1; % current time bin
 tspnext = exprnd(1);  % time of next spike (in rescaled time)
 rprev = 0;  % Integrated rescaled time up to current point
@@ -82,7 +68,7 @@ rprev = 0;  % Integrated rescaled time up to current point
 % --------------- Run dynamics ---------------------------------------
 while jbin <= rlen
     iinxt = jbin:min(jbin+nbinsPerEval-1,rlen);
-    rrnxt = glmprs.nlfun(Vmem(iinxt))*dt; % Cond Intensity
+    rrnxt = glmprs.nlfun(Itot(iinxt))*dt; % Cond Intensity
     rrcum = cumsum(rrnxt)+rprev; % integrated cond intensity
     if (tspnext >= rrcum(end)) % No spike in this window
         jbin = iinxt(end)+1;
@@ -94,10 +80,7 @@ while jbin <= rlen
         mxi = min(rlen, ispk+hlen); % max time affected by post-spike kernel
         iiPostSpk = ispk+1:mxi; % time bins affected by post-spike kernel
         if ~isempty(iiPostSpk)
-            Vmem(iiPostSpk) = Vmem(iiPostSpk)+ih(1:mxi-ispk);
-            if nargout == 4  % Record post-spike current
-                Ispk(iiPostSpk) = Ispk(iiPostSpk)+ih(1:mxi-ispk);
-            end
+            Itot(iiPostSpk) = Itot(iiPostSpk)+glmprs.ih(1:mxi-ispk);
         end
         tspnext = exprnd(1);  % draw next spike time
         rprev = 0; % reset integrated intensity
@@ -110,8 +93,8 @@ end
 tsp = find(sps>0)*dt;
 
 % ========================================================================
-function [tsp,sps,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
-% [tsp,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
+function [tsp,sps,Itot,Istm] = simGLMcpl(glmprs,Stim,upSampFactor)
+% [tsp,sps,Itot,Istm] = simGLMcpl(glmprs,Stim,upSampFactor)
 % 
 % Compute response of (multi-cell) coupled-glm to stimulus Stim.
 %
@@ -126,7 +109,7 @@ function [tsp,sps,Vmem,Ispk] = simGLMcpl(glmprs,Stim,upSampFactor)
 % --------------- Check Inputs ----------------------------------
 ncells = size(glmprs.k,3);
 nbinsPerEval = 100;  % Default number of bins to update for each spike
-dt = glmprs.dt;
+dt = glmprs.dtSp;
 % Check that dt evenly divides 1
 if mod(1,dt) ~= 0
     dt = 1/round(1/dt);
@@ -134,24 +117,19 @@ if mod(1,dt) ~= 0
 end
 slen = size(Stim,1); % length of stimulus
 rlen = slen*upSampFactor;  % length of binned response
+ih = permute(glmprs.ih,[1 3 2]); % permute so all outgoing filters in a single plane
+hlen = size(ih,1); % length of h filter
 
 % -------------  Compute filtered resp to signal ----------------
 Istm = zeros(slen,ncells);
 for jj = 1:ncells
     Istm(:,jj) = sameconv(Stim,glmprs.k(:,:,jj));  % filter stimulus with k
 end
+Istm = bsxfun(@plus,Istm,glmprs.dc); % add DC term
+
 % Compute finely sampled version
-Vmem = kron(Istm,ones(upSampFactor,1)) + glmprs.dc; % upsample stim current
-
-% -------------- Compute interpolated h current ----------------------
-ih = reshape(interp_spikeFilt(glmprs.ih, glmprs.iht, dt),[],ncells,ncells);
-ih = permute(ih,[1 3 2]);
-hlen = length(ih);
-
-% -------------  Static nonlinearity & spiking -------------------
-if nargout == 4
-    Ispk = Vmem*0;
-end
+Istm = kron(Istm,ones(upSampFactor,1)); % upsample stim current
+Itot = Istm; % total filter output
 
 % --------------- Set up simulation dynamics variables ---------------
 tsp(1,1:ncells) = {zeros(round(slen/25),1)};  % allocate space for spike times
@@ -160,12 +138,11 @@ jbin = 1;  % counter ?
 tspnext = exprnd(1,1,ncells); % time of next spike (in rescaled time) 
 rprev = zeros(1,ncells); % Integrated rescaled time up to current point
 
-
 % --------------- Run dynamics ---------------------------------------
 while jbin <= rlen
     iinxt = jbin:min(jbin+nbinsPerEval-1,rlen); % Bins to update in this iteration
     nii = length(iinxt);  % Number of bins
-    rrnxt = glmprs.nlfun(Vmem(iinxt,:))*dt/RefreshRate; % Cond Intensity
+    rrnxt = glmprs.nlfun(Itot(iinxt,:))*dt; % Cond Intensity
     rrcum = cumsum(rrnxt+[rprev;zeros(nii-1,ncells)],1);  % Cumulative intensity
     if all(tspnext >= rrcum(end,:)) % No spike in this window
         jbin = iinxt(end)+1;
@@ -184,10 +161,7 @@ while jbin <= rlen
             nsp(icell) = nsp(icell)+1;
             tsp{icell}(nsp(icell),1) = ispk*dt;
             if ~isempty(iiPostSpk)
-                Vmem(iiPostSpk,:) = Vmem(iiPostSpk,:)+ih(1:mxi-ispk,:,icell);
-                if nargout == 4  % Record post-spike current
-                    Ispk(iiPostSpk,:)=Ispk(iiPostSpk,:)+ih(1:mxi-ispk,:,icell);
-                end
+                Itot(iiPostSpk,:) = Itot(iiPostSpk,:)+ih(1:mxi-ispk,:,icell);
             end
             rprev(icell) = 0;  % reset this cell's integral
             tspnext(icell) = exprnd(1); % draw RV for next spike in this cell
@@ -199,8 +173,12 @@ while jbin <= rlen
     end
 end
 
-% Remove any extra bins from cell array of spike times
-for j = 1:ncells
-    tsp{j} = tsp{j}(1:nsp(j));
+% Remove any extra bins from tsp and compute binned spike train 'sps'
+sps = logical(sparse(rlen,ncells));
+for jj = 1:ncells
+    tsp{jj} = tsp{jj}(1:nsp(jj));
+    if ~isempty(tsp{jj})
+        sps(round(tsp{jj}/dt),jj) = 1;
+    end
 end
 

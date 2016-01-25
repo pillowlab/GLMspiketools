@@ -1,30 +1,23 @@
 % testscript3_GLM_coupled.m
 %
-% Test code for simulating and fitting a coupled GLM (2 neurons).
+% Demo script for simulating and fitting a coupled GLM (2 neurons).
 %
 % Notes:
-%   Fitting code uses same functions as for single-cell responses.
-%   Simulation code requires new structures / functions
+%  - Fitting code uses same functions as for single-cell responses.
+%  -  Simulation code requires new structures / functions
 %     (due to the need to pass activity between neurons)
-%
-% Code Blocks:  
-%   1. Set up model params and plot
-%   2. Show samples from simulated model
-%   3. Generate training data
-%   4. Fit simulated dataset via maximum-likelihood (ML)
-%   5. Plot results
 
-global RefreshRate;  % Stimulus refresh rate (Stim frames per second)
-RefreshRate = 100;
+% Make sure paths are set (assumes this script called from 'demos' directory)
+cd ..; setpaths; cd demos/
 
 
-%%  1.  Set parameters and display for GLM  ============ %
+%%  ===== 1. Set parameters and display for GLM  ============ %
 
-DTsim = .01; % Bin size for simulating model & computing likelihood (in units of stimulus frames)
-nkt = 20;    % Number of time bins in filter;
-ttk = [-nkt+1:0]'; 
-ggsim1 = makeSimStruct_GLM(nkt,DTsim);  % Create GLM struct with default params
-ggsim2 = makeSimStruct_GLM(nkt,DTsim);  % Create GLM struct with default params
+dtStim = .01; % Bin size for simulating model & computing likelihood (in units of stimulus frames)
+dtSp = .001;  % Bin size for simulating model & computing likelihood (must evenly divide dtStim);
+nkt = 20;    % Number of time bins in stimulus filter k
+ggsim1 = makeSimStruct_GLM(nkt,dtStim,dtSp);  % Create GLM struct with default params
+ggsim2 = makeSimStruct_GLM(nkt,dtStim,dtSp);  % Create GLM struct with default params
 
 % Change second neuron's stimulus filter
 [ktbas,ktbasis] = makeBasis_StimKernel(ggsim2.ktbasprs,nkt);
@@ -32,178 +25,149 @@ ggsim2.k = ktbasis*[0 0 .1 .25 .5 .5 .25 -.25 -.5 -.25]'; % more delayed filter
 ggsim = makeSimStruct_GLMcpl(ggsim1,ggsim2);
 
 % Make some coupling kernels
-[iht,ihbas,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,DTsim);
-hhcpl = ihbasis*[.5;.5;.25;0;0];
-hhcpl(:,2) = ihbasis*[-1;-1;0;.25;.25];
+[iht,ihbas,ihbasis] = makeBasis_PostSpike(ggsim.ihbasprs,dtSp);
+hhcpl = ihbasis*[.25;.25;.125;0;0];
+hhcpl(:,2) = ihbasis*[-2;-1;0;.25;.25];
 ggsim.ih(:,2,1) = hhcpl(:,2); % 2nd cell coupling to first
 ggsim.ih(:,1,2) = hhcpl(:,1); % 1st cell coupling to second
 
 % === Make Fig: model params =======================
-figure(1);  
-subplot(2,2,1);
+ttk = (-nkt+1:0)'*dtStim; 
+subplot(2,2,1); % -------------------------------
 plot(ttk, ggsim.k(:,:,1));
 title('neuron 1 stim kernel');
-subplot(2,2,3);
+subplot(2,2,3); % -------------------------------
 plot(ttk, ggsim.k(:,:,2));
-title('neuron 2 stim kernel');
-xlabel('time (frames)');
-
-subplot(2,2,2); % --------
+title('neuron 2 stim kernel'); xlabel('time (frames)');
+subplot(2,2,2); % --------------------------------
 plot(ggsim.iht, exp(ggsim.ih(:,:,1)), ggsim.iht, ggsim.iht*0+1, 'k--');
 title('spike kernels into Cell 1 (exponentiated)');
-legend('from 1', 'from 2', 'location', 'northeast');
-ylabel('gain');
-
-subplot(2,2,4); % --------
+legend('from 1', 'from 2', 'location', 'northeast'); ylabel('gain');
+subplot(2,2,4); % ---------------------------------
 plot(ggsim.iht, exp(ggsim.ih(:,:,2)), ggsim.iht, ggsim.iht*0+1, 'k--');
 title('spike kernels into Cell 2 (exponentiated)');
 legend('from 1', 'from 2', 'location', 'northeast');
-ylabel('multiplicative gain');
-xlabel('time after spike (frames)');
+ylabel('gain'); xlabel('time after spike (frames)');
 
 
-%% 2. Make Gaussian White Noise stimulus & simulate glm resp ========= %
+%% ===== 2. Run short simulation for visualization purposes ========= %
 % 
 slen = 50; % Stimulus length (frames) & width (# pixels)
 swid = size(ggsim.k,2); % stimulus width
 Stim = 2*randn(slen,swid);  % Gaussian white noise stimulus
-[tsp, vmem,Ispk] = simGLM(ggsim, Stim); % Simulate GLM response
+[tsp,~,Itot,Istm] = simGLM(ggsim, Stim); % Simulate GLM response
+Isp = Itot-Istm; % net spike-history output
 
 % ==== Plot some traces of simulated response  ========
-figure(2); 
-tt = [DTsim:DTsim:slen]';
+tt = (dtSp:dtSp:slen*dtStim)';
 subplot(321); %------------------------
 plot(1:slen, Stim, 'k', 'linewidth', 2); 
-title('GWN stimulus');
-axis tight;
-
+title('GWN stimulus'); axis tight;
 subplot(3,2,3); %------------------------
-plot(tt, vmem(:,1), tsp{1}, max(vmem(:,1))*ones(size(tsp{1})), 'ro');
+plot(tt, Itot(:,1),'b',tsp{1}, max(Itot(:,1))*ones(size(tsp{1})), 'ro');
 title('cell 1: net voltage + spikes');
-axis([0 slen, min(vmem(:,1)) max(vmem(:,1))*1.01]);
-% -----Run repeat simulations ------
-nrpts = 5;        % number of repeats to draw
-ylabel('filter output');
-
+axis([0 slen*dtStim, min(Itot(:,1)) max(Itot(:,1))*1.01]); ylabel('filter output');
 subplot(3,2,4); %------------------------
-plot(tt, vmem(:,2), 'b', tsp{2}, max(vmem(:,2))*ones(size(tsp{2})), 'ro');
+plot(tt, Itot(:,2), 'b', tsp{2}, max(Itot(:,2))*ones(size(tsp{2})), 'ro');
 title('cell 2: net voltage + spikes');
-axis([0 slen, min(vmem(:,2)) max(vmem(:,2))*1.01]);
-axis tight;
-
-subplot(325)
-plot(tt, vmem(:,1)-Ispk(:,1), 'k', tt, Ispk(:,1), 'r');
+axis([0 slen*dtStim, min(Itot(:,2)) max(Itot(:,2))*1.01]); 
+subplot(325)  % --------------------------
+plot(tt, Istm(:,1), 'k', tt, Isp(:,1), 'r');
+title('stim-induced & spike-induced currents');  axis tight;
+xlabel('time (frames)'); ylabel('filter output');
+subplot(326); %---------------------------
+plot(tt, Istm(:,2), 'k', tt, Isp(:,2), 'r');
 title('stim-induced & spike-induced currents'); 
-axis tight;
-xlabel('time (frames)');
-ylabel('filter output');
-
-subplot(326)
-plot(tt, vmem(:,2)-Ispk(:,2), 'k', tt, Ispk(:,2), 'r');
-title('stim-induced & spike-induced currents'); 
-axis tight;
-xlabel('time (frames)');
+axis tight; xlabel('time (frames)');
 
 
-%% 3. Generate some training data
-slen = 2500;  % Stimulus length (frames);  More samples gives better fit
-Stim = round(rand(slen,swid))*4-2;  %  Run model on long, binary stimulus
-[tsp,vmem,ispk] = simGLM(ggsim,Stim);  % run model
+%% ===== 3. Generate some training data =============================== %%
 
-% -------------- Compute STAs------------
-nsp = length(tsp{1});
-sta0 = simpleSTC(Stim,tsp{1},nkt); % Compute STA 1
-sta1 = reshape(sta0,nkt,[]); 
-
-sta0 = simpleSTC(Stim,tsp{2},nkt); % Compute STA 2
-sta2 = reshape(sta0,nkt,[]); 
-
-exptmask= [100 slen];  % data range to use for fitting
-
-% %% ---------------
-% % Uncomment to check consistency in computing conditional intensity between
-% % simulation and fitting code
-% % ----------------
-% 
-% % % Make param object with "true" params;  
-% cellnum = 1;
-% ggTrue1 = makeFittingStruct_GLM(ggsim.k(:,:,1),DTsim,ggsim,cellnum);
-% ggTrue1.tsp = tsp{1}; % cell 1 spike times (vector) 
-% ggTrue1.tsp2 = tsp(2); % spike trains from "coupled" cells (cell array of spike-time vectors)
-% ggTrue1.mask = exptmask;
-% % Check that conditional intensity calc is correct:
-% [logliTrue1, rrT1,tt] = neglogli_GLM(ggTrue1,Stim);
-% subplot(211); plot(tt,vmem(:,1),tt,log(rrT1));
-% title('total linear filter output');
-% subplot(212); plot(tt,log(rrT1)-vmem(:,1));
-% title('difference');
-% 
-% %%
-% cellnum = 2;
-% ggTrue2 = makeFittingStruct_GLM(ggsim.k(:,:,2),DTsim,ggsim,cellnum);
-% ggTrue2.tsp = tsp{2};  % cell 2 spike times (vector) 
-% ggTrue2.tsp2 = tsp(1); % spike trains from "coupled" cells (cell array of spike-time vectors)
-% ggTrue2.mask = exptmask;
-% % Check that conditional intensity calc is correct:
-% [logliTrue2, rrT2,tt] = neglogli_GLM(ggTrue2,Stim);
-% subplot(211); plot(tt,vmem(:,2),tt,log(rrT2));
-% title('total linear filter output');
-% subplot(212); plot(tt,log(rrT2)-vmem(:,2));
-% title('difference');
-% % % ---------------
+slen = 5000;  % Stimulus length (frames);  More samples gives better fit
+Stim = round(rand(slen,swid))-.5;  %  Run model on long, binary stimulus
+[tsp,sps,Itot,ispk] = simGLM(ggsim,Stim);  % run model
 
 
-%% 4. Do ML fitting of params with simulated data ============= %
-%  Initialize params for fitting --------------
-gg0 = makeFittingStruct_GLM(sta1,DTsim,ggsim,1);  % Initialize params for fitting struct w/ sta
-gg0.ihw = gg0.ihw*0;  % Initialize to zero
-gg0.ihw2 = gg0.ihw2*0;  % Initialize to zero
-gg0.dc = gg0.dc*0;  % Initialize to zero
+%% ===== 4. Fit cell #1 (with coupling from cell #2) =================== %%
 
-gg0.tsp = tsp{1};   % cell 2 spike times (vector)
-gg0.tsp2 = tsp(2);  % spike trains from "coupled" cells (cell array of vectors)
-gg0.mask = exptmask;
+% Compute Spike-triggered averages
+sps1 = sum(reshape(sps(:,1),[],slen),1)'; % bin spikes in bins the size of stimulus
+sta1 = simpleSTC(Stim,sps1,nkt); % Compute STA 1
+sta1 = reshape(sta1,nkt,[]); 
 
-[logli0] = neglogli_GLM(gg0,Stim);
+sps2 = sum(reshape(sps(:,2),[],slen),1)'; % rebinned spike train
+sta2 = simpleSTC(Stim,sps2,nkt); % Compute STA 2
+sta2 = reshape(sta2,nkt,[]); 
 
-% Do ML estimation of model params
-fprintf('Fitting first neuron ( logli0=%.3f )\n', logli0);
+% Initialize param struct for fitting 
+gg0 = makeFittingStruct_GLM(dtStim,dtSp);  % Initialize params for fitting struct 
+
+% Initialize fields (using h and k bases computed above)
+gg0.ktbas = ktbas; % k basis
+gg0.ihbas = ihbas; % h self-coupling basis
+gg0.ihbas2 = ihbas; % h coupling-filter basis
+nktbasis = size(ktbas,2); % number of basis vectors in k basis
+nhbasis = size(ihbas,2); % number of basis vectors in h basis
+gg0.kt = 0.1*(ktbas\sta1); % initial params from scaled-down sta 
+gg0.k = gg0.ktbas*gg0.kt;  % initial setting of k filter
+gg0.ihw = zeros(nhbasis,1); % params for self-coupling filter
+gg0.ihw2 = zeros(nhbasis,1); % params for cross-coupling filter
+gg0.ih = [gg0.ihbas*gg0.ihw gg0.ihbas2*gg0.ihw2];
+gg0.iht = iht;
+gg0.dc = 0; % Initialize dc term to zero
+gg0.couplednums = 2; % number of cell coupled to this one (for clarity)
+
+% Set spike responses for cell 1 and coupled cell
+gg0.sps = sps(:,1);  
+gg0.sps2 = sps(:,2); 
+
+% Compute initial value of negative log-likelihood (just to inspect)
+[neglogli0,rr] = neglogli_GLM(gg0,Stim);
+
+% Do ML fitting
+fprintf('Fitting neuron 1:  initial neglogli0 = %.3f\n', neglogli0);
 opts = {'display', 'iter', 'maxiter', 100};
-[gg1, negloglival1] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
+[gg1, neglogli1] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 
-%% Fit other cell
+%% ===== 5. Fit cell #2 (with coupling from cell #1) ==================
+
 gg0b = gg0; % initial parameters for fitting 
-gg0b.tsp = tsp{2};   % cell 2 spike times (vector)
-gg0b.tsp2 = tsp(1);  % spike trains from "coupled" cells (cell array of vectors)
-gg0b.kt = (gg0.ktbas'*gg0.ktbas)\(gg0.ktbas'*sta2); % Project STA2 into basis 
+gg0b.sps = sps(:,2); % cell 2 spikes
+gg0b.sps2 = sps(:,1); % spike trains from coupled cells 
+gg0.kt = 0.1*(ktbas\sta2); % initial params from scaled-down sta 
 gg0b.k = gg0b.ktbas*gg0b.kt; % Project STA onto basis for fitting
+gg0.couplednums = 1; % number of cell coupled to this one
 
-[logli0b] = neglogli_GLM(gg0b,Stim);
-fprintf('Fitting second neuron (logli0=%.3f)\n', logli0b);
-[gg2, negloglival2] = MLfit_GLM(gg0b,Stim,opts); % do ML (requires optimization toolbox)
+% Compute initial value of negative log-likelihood (just to inspect)
+[neglogli0b] = neglogli_GLM(gg0b,Stim); % initial value of negative logli
+
+% Do ML fitting
+fprintf('Fitting neuron 2: initial neglogli = %.3f\n', neglogli0b);
+[gg2, neglogli2] = MLfit_GLM(gg0b,Stim,opts); % do ML (requires optimization toolbox)
 
 
-%% --- Plot results ----------------------------
-figure(3);
-ttk = -nkt+1:0;
-subplot(221);  % Filters cell 1 % ---------------
-plot(ttk, ggsim1.k, 'k', ttk, gg1.k, 'r');
-title('Cell 1 stim filt (True=blck, ML=red)');
+%% ===== 6. Plot fits  ============================================= %%
 
-subplot(223);  % Filters cell 2 % ---------------
+ttk = (-nkt+1:0)*dtStim; % time indices for k
+
+subplot(221);  % Stim filters cell 1 % ---------------
+plot(ttk, ggsim1.k(:,1), 'k', ttk, gg1.k, 'r');
+title('Cell 1: k filter');
+legend('true', 'estim', 'location', 'northwest');
+subplot(223);  % Stim filters cell 2 % ---------------
 plot(ttk, ggsim2.k, 'k', ttk, gg2.k, 'r');
-title('Cell 2 stim filt (True=blck, ML=red)');
-xlabel('time (frames)')
-
-subplot(222); % ----------------------------------
-plot(ggsim.iht, exp(ggsim.ih(:,:,1)), 'k', gg1.iht, exp(gg1.ih));
-title('Cell 1: exponentiated post-spk kernels');
+title('Cell 2: k filter');
+xlabel('time (s)')
+subplot(222); % --Spike filters cell 1 % -------------
+plot(ggsim.iht, (ggsim.ih(:,:,1)), gg1.iht, (gg1.ih), '--');
+title('exponentiated incoming h filters');
+legend('true h11', 'true h21', 'estim h11', 'estim h21');
 axis tight;
+subplot(224); % --Spike filters cell 2 % ------------- 
+plot(ggsim.iht, (ggsim.ih(:,:,2)), gg2.iht, (gg2.ih), '--');
+title('exponentiated incoming h filters');
+axis tight; xlabel('time (s)')
+legend('true h22', 'true h12', 'estim h22', 'estim h12');
 
-subplot(224); % ----------------------------------
-plot(ggsim.iht, exp(ggsim.ih(:,:,2)), 'k', gg2.iht, exp(gg2.ih));
-title('Cell 2: exponentiated post-spk kernels');
-xlabel('time (frames)')
-axis tight;
 

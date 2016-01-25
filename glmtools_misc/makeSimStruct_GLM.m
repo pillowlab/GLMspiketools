@@ -61,7 +61,7 @@ ih = ihbasis*[-10 .5 1 .25 -1]';  % h current
 S = struct(...
     'k', 2*k, ... % stimulus filter
     'nlfun', nlinF, ...  % nonlinearity
-    'dc', 3, ...         % dc input (constant) 
+    'dc', 1.5, ...         % dc input (constant) 
     'ih', ih, ...        % post-spike current
     'iht', iht, ...      % time indices of aftercurrent
     'dtStim', dtStim,... % time bin size for stimulus (s)

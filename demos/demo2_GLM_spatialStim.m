@@ -49,7 +49,7 @@ set(gca, 'xlim', [.5 nkx+.5]); xlabel('space (pixels)');
 
 slen = 10000; % Stimulus length (frames);  More samples gives better fit
 Stim = round(rand(slen,nkx))*2-1;  %  Run model on long, binary stimulus
-[tsp,sps,Itot,Isp] = simGLM(ggsim,Stim);  % run model
+[tsp,sps,Itot,Istm] = simGLM(ggsim,Stim);  % run model
 nsp = length(tsp);
 
 % --- Make plot of first 0.5 seconds of data --------
@@ -67,7 +67,8 @@ ylabel('spike rate (sp/s)');
 title('conditional intensity (and spikes)');
 
 subplot(313); 
-plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
+Isp = Itot-Istm; % total spike-history filter output
+plot(ttspk,Istm(iispk), ttspk,Isp(iispk)); axis tight;
 legend('k output', 'h output'); xlabel('time (s)');
 ylabel('log intensity'); title('filter outputs');
 
@@ -137,9 +138,9 @@ imagesc(gg2.k); title('ML estimate: bilinear filter'); xlabel('space');
 
 subplot(236); % ----------------------------------
 plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ihw),'b',...
-    gg2.iht, exp(gg2.ihbas*gg2.ihw), 'r');
-title('post-spike kernel'); axis tight;
-xlabel('time after spike (s)');
+    gg2.iht, exp(gg2.ihbas*gg2.ihw), 'r'); axis tight;
+title('post-spike kernel');  xlabel('time after spike (s)');
+legend('true','GLM','bilinear GLM');
 
 % Errors in STA and ML estimate
 ktmu = normalizecols([mean(ggsim.k,2),mean(gg1.k,2),mean(gg2.k,2)]);

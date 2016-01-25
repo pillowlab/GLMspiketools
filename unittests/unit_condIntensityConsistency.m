@@ -15,15 +15,14 @@ slen = 5000; % Stimulus length (frames);  More samples gives better fit
 swid = 1;
 Stim = randn(slen,swid);  %  Run model on long, binary stimulus
 
-[tsp,sps,vmem,ispk] = simGLM(ggsim,Stim);  % run model and return conditional intensity
+[tsp,sps,Itot,Istm] = simGLM(ggsim,Stim);  % run model and return conditional intensity
 nsp = length(tsp);
 
 %% 3. Make param object with "true" params ================================
 ggTrue = makeFittingStruct_GLM(dtStim,dtSp);
 ggTrue.k = ggsim.k;   % insert stimulus filter
 ggTrue.dc = ggsim.dc; % insert dc value
-ggTrue.ihw = ggsim.ih; % insert spike-history filter
-ggTrue.ihbas = speye(length(ggsim.ih));
+ggTrue.ih = ggsim.ih; % insert spike-history filter
 ggTrue.sps = sps; % spike times
 ggTrue.mask = [];
 
@@ -33,14 +32,19 @@ ggTrue.mask = [];
 % To make it fail if you want to: 
 % Stim(1) = Stim(1)+.1;
 
-[logliTrue, rrT,tt,Iinj,Istm,Ih] = neglogli_GLM(ggTrue,Stim);
+[logliTrue, rrT,tt,Itot2,Istm2,Ih2] = neglogli_GLM(ggTrue,Stim);
 
 %% 5. Unit tests
 
 % On total log-conditional intensity
-assert(max(abs(vmem-Iinj))<1e-8,'Unit failed: log-conditional intensity consistency');
+assert(max(abs(Itot-Itot2))<1e-8,'Unit failed: log-conditional intensity consistency');
 
-% On just the spike-history component of the conditional intensity
-assert(max(abs(ispk-Ih))<1e-8,'Unit failed: spike-history filter output consistency');
+% On just the stimulus component of the conditional intensity
+assert(max(abs(Istm-Istm2))<1e-8,'Unit failed: spike-history filter output consistency');
+
+
+% =================================== 
+% Report if passed
+% ===================================
 
 fprintf('Unit passed: condIntensityConsistency\n');

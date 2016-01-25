@@ -69,7 +69,8 @@ S.k = kk;
 S.dc = dc;
 S.ih = ih;
 S.iht = varargin{1}.iht;
-S.dt = varargin{1}.dt;
+S.dtStim = varargin{1}.dtStim;
+S.dtSp = varargin{1}.dtSp;
 
 if all(min(NLtst)==max(NLtst))
     S.nlfun = nlfuns{1};

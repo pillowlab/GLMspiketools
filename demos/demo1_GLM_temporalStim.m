@@ -1,6 +1,6 @@
 % demo1_GLM_temporalStim.m
 %
-% Test code for simulating and fitting a single-neuron GLM with  1D
+% Demo script for simulating and fitting a single-neuron GLM with  1D
 % (temporal) filter with exponential nonlinearity 
 
 % Make sure paths are set (assumes this script called from 'demos' directory)
@@ -30,7 +30,7 @@ subplot(224); % --------
 plot(ggsim.iht, ihbasis);  title('basis for h'); axis tight;
 
 
-%% 2. Make some training data  %========================================
+%% 2. Generate some training data  %========================================
 slen = 50000; % Stimulus length (frames); more samples gives better fit
 swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 
@@ -38,7 +38,7 @@ swid = 1;  % Stimulus width  (pixels); must match # pixels in stim filter
 Stim = rand(slen,swid)*2-1;  % Stimulate model to long, unif-random stimulus
 
 % Simulate model
-[tsp,sps,Itot,Isp] = simGLM(ggsim,Stim);  % run model
+[tsp,sps,Itot,Istm] = simGLM(ggsim,Stim);  % run model
 
 % --- Make plot of first 0.5 seconds of data --------
 tlen = 0.5;
@@ -55,7 +55,8 @@ ylabel('spike rate (sp/s)');
 title('conditional intensity (and spikes)');
 
 subplot(313); 
-plot(ttspk,Itot(iispk)-Isp(iispk), ttspk,Isp(iispk)); axis tight;
+Isp = Itot-Istm; % total spike-history filter output
+plot(ttspk,Istm(iispk), ttspk,Isp(iispk)); axis tight;
 legend('k output', 'h output'); xlabel('time (s)');
 ylabel('log intensity'); title('filter outputs');
 
@@ -63,8 +64,8 @@ ylabel('log intensity'); title('filter outputs');
 
 % Compute the STA
 sps_coarse = sum(reshape(sps,[],slen),1)'; % bin spikes in bins the size of stimulus
-sta0 = simpleSTC(Stim,sps_coarse,nkt); % Compute STA
-sta = reshape(sta0,nkt,[]); % reshape it to match dimensions of true filter
+sta = simpleSTC(Stim,sps_coarse,nkt); % Compute STA
+sta = reshape(sta,nkt,[]); % reshape it to match dimensions of true filter
 
 % Set mask (if desired)
 exptmask= []; %[1 slen*dtStim];  % data range to use for fitting (in s).
