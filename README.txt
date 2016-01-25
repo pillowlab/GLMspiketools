@@ -58,12 +58,12 @@ are represented with 1ms precision, then `dtStim=.01` and `dtSp=.001`.
 
 - fitting code relies on the matlab optimization toolbox function "fminunc".
 
-- An older release of this code (tagged 'v1' on github) had
+- An older release of this code (now sitting in branch 'old_v1') had
   functionality that is no longer supported.  Namely: cubic spline
   parametrization of the nonlinearity, and a smart "chunking" of the
   design matrix that was more memory efficient (albeit slightly
   slower). If memory issues are a problem, due to large stimulus or
   coupling from many neurons, we suggest checking out version v1. (In
-  the shell: `git checkout tags/v1`).  Note release v1 requires
-  mex for compiling several functions written in C.
+  the shell: `git checkout old_v1`).  Note release v1 requires mex for
+  compiling several functions written in C.
 
