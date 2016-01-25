@@ -43,7 +43,7 @@ Basic Usage
 2. `demo2_GLM_spatialStim.m` - simulates and fits GLM  with 2D (space
    x time) stimulus, and illustrates both linear and bilinear
    parametrization of stimulus filter.
-3. `testscript_GLM_coupled.m` - simulates and fits GLM with two coupled neurons
+3. `demo3_GLM_coupled.m` - simulates and fits GLM with two coupled neurons
 
 
 Notes
