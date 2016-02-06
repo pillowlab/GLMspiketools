@@ -15,7 +15,7 @@ using cubic splines. This model is a generalization of the
 effects and correlations between neurons.
 
 **Relevant publication:**
-[Pillow et al, *Nature* 2008](http://pillowlab.princeton.edu/pubs/abs_ParkI_NN14.html)
+[Pillow et al, *Nature* 2008](http://pillowlab.princeton.edu/pubs/abs_Pillow08_nature.html)
 
 
 
