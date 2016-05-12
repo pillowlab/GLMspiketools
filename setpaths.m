@@ -13,6 +13,5 @@ basedir = pwd;  % The directory where this script lives
 % Add a bunch sub-directories (with absoluate path names)
 addpath([basedir '/glmtools_fitting/']);
 addpath([basedir '/glmtools_misc/']);
-addpath([basedir '/glmtools_mex/']);
 addpath([basedir '/nlfuns/']);
 
