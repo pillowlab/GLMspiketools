@@ -1,5 +1,5 @@
-function [gg,fval,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
-%  [gg,fval,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
+function [gg,neglogli,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
+%  [gg,neglogli,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
 % 
 %  Computes the ML estimate for GLM params, using grad and hessians.
 %  Assumes basis for temporal dimensions of stim filter
@@ -11,9 +11,9 @@ function [gg,fval,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
 %
 %  Outputs:
 %     ggnew = new param struct (with ML params);
-%     fval = negative log-likelihood at ML estimate
-%        H = Hessian of negative log-likelihood at ML estimate
-%  Xstruct = structure with design matrices for spike-hist and stim terms
+%  neglogli = negative log-likelihood at ML estimate
+%         H = Hessian of negative log-likelihood at ML estimate
+%   Xstruct = structure with design matrices for spike-hist and stim terms
 
 % Set optimization parameters 
 if nargin > 2
@@ -32,11 +32,11 @@ else
     lfunc = @(prs)Loss_GLM_logli(prs,Xstruct); % loss function for all other nonlinearities
 end
 % --- minimize negative log likelihood --------------------
-[prsML,fval] = fminunc(lfunc,prs0,opts); % find ML estimate of params
+[prsML,neglogli] = fminunc(lfunc,prs0,opts); % find ML estimate of params
 
 % Compute Hessian if desired
 if nargout > 2 
-    [fval,~,H] = Loss_GLM_logli(prsML,Xstruct);
+    [neglogli,~,H] = Loss_GLM_logli(prsML,Xstruct);
 end
 
 % Put returned vals back into param structure ------
