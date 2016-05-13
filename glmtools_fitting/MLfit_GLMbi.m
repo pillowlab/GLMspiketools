@@ -1,5 +1,5 @@
 function [gg,fval,H,Xstruct] = MLfit_GLMbi(gg,Stim,optimArgs)
-%  [gg,fval,H] = MLfit_GLMbi(gg,Stim,optimArgs);
+%  [gg,fval,H,Xstruct] = MLfit_GLMbi(gg,Stim,optimArgs);
 % 
 %  Computes the ML estimate for GLM params, using grad and hessians.
 %  Assumes bilinear parametrization of space-time filter.

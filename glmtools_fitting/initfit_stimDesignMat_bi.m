@@ -28,7 +28,7 @@ catch
     error('Out of Memory Error in initfit_stimDesignMat_bi.m');
 end
 
-
+% ---- Build stimulus design matrix -------------
 for i = 1:nkx
     for j = 1:nkt
         Xstruct.Xstim(:,(i-1)*nkt+j) = sameconv(xfltStim(:,i),gg.ktbas(:,j));
