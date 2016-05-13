@@ -59,7 +59,7 @@ if (nargin > 4) && (~isempty(k0))
 end
 
 % ----- Set up basis for post-spike filter -----------------------
-if nargin > 5
+if (nargin > 5) && (nhbasis>0)
     ihbasprs.ncols = nhbasis;  % Number of basis vectors for post-spike kernel
     ihbasprs.hpeaks = [dtSp lasthpeak];  % Peak location for first and last vectors
     ihbasprs.b = lasthpeak/5;  % How nonlinear to make spacings (rough heuristic)

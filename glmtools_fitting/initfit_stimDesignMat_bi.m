@@ -19,7 +19,16 @@ assert(nkx == swid,'Mismatch between stim width and kernel width');
 
 % ---- Convolve stimulus with spatial and temporal bases -----
 xfltStim = Stim*gg.kxbas; % stimulus filtered with spatial basis
-Xstruct.Xstim = zeros(slen,ncols); %
+
+% ---- Allocated space for design matrix ------
+try  Xstruct.Xstim = zeros(slen,ncols); %
+catch
+    fprintf('\nERROR: Stimulus too for joint optimization!\n');
+    fprintf('Use ''MLfit_GLMbi_coordascent.m'' instead\n\n');
+    error('Out of Memory Error in initfit_stimDesignMat_bi.m');
+end
+
+
 for i = 1:nkx
     for j = 1:nkt
         Xstruct.Xstim(:,(i-1)*nkt+j) = sameconv(xfltStim(:,i),gg.ktbas(:,j));
