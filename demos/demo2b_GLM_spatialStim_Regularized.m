@@ -1,8 +1,7 @@
-% demo2_GLM_spatialStim.m
+% demo2b_GLM_spatialStim_Regularized.m
 %
 % Test code for simulating and fitting the GLM with a 2D stimulus filter
-% (time x 1D space), with both traditional and bilinear parametrization
-% of the stimulus kernel.
+% (time x 1D space), regularized with a Gaussian prior.
 
 % Make sure paths are set (assumes this script called from 'demos' directory)
 cd ..; setpaths; cd demos/
@@ -47,8 +46,12 @@ set(gca, 'xlim', [.5 nkx+.5]); xlabel('space (pixels)');
 
 %% 2. Generate some training data ========================================
 
-slen = 10000; % Stimulus length (frames);  More samples gives better fit
-Stim = round(rand(slen,nkx))*2-1;  %  Run model on long, binary stimulus
+% generate stimulus
+slen = 5000; % Stimulus length (frames);  More samples gives better fit
+gfilt = normpdf(-3:3, 0, 1); 
+Stim = conv2(randn(slen,nkx),gfilt,'same'); %  convolve in space
+Stim = conv2(Stim,gfilt','same'); % convolve in time
+
 [tsp,sps,Itot,Istm] = simGLM(ggsim,Stim);  % run model
 nsp = length(tsp);
 
@@ -74,7 +77,7 @@ ylabel('log intensity'); title('filter outputs');
 
 
 
-%% 3. Fit GLM (traditional version) via max likelihood
+%% 3. Fit GLM with max likelihood
 
 % Compute the STA
 sps_coarse = sum(reshape(sps,[],slen),1)'; % bin spikes in bins the size of stimulus
@@ -98,26 +101,47 @@ gg0.ihw = randn(size(gg0.ihw))*1; % initialize spike-history weights randomly
 fprintf('Initial negative log-likelihood: %.5f\n', negloglival0);
 
 % Do ML estimation of model params
-opts = {'display', 'iter', 'maxiter', 100};
+opts = {'display', 'iter', 'maxiter', 1000};
 [gg1, negloglival1a] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 
-%% 4. Fit GLM ("bilinear stim filter version") via max likelihood
+%% 4. Fit GLM with iid Gaussian ("ridge regression") prior.
 
-%  Initialize params for fitting --------------
-k_rank = 1; % Number of column/row vector pairs to use
-gg0b = makeFittingStruct_GLMbi(k_rank,dtStim,dtSp,nkt,nkbasis,sta,nhbasis,hpeakFinal);
-gg0b.sps = sps;
-gg0b.mask = exptmask;
-logli0b = neglogli_GLM(gg0b,Stim); % Compute logli of initial params
-fprintf('Initial value of negative log-li (GLMbi): %.3f\n', logli0b);
+% Divide data into training and test
+trainfrac = 0.8;
+ntrain = ceil(trainfrac*slen);
+spstrain = sps(1:ntrain); stimtrain = Stim(1:ntrain,:);
+spstest = sps(ntrain+1:end); stimtest = Stim(ntrain+1:end,:);
 
-% Do ML estimation of model params
-opts = {'display', 'iter'};
-[gg2, negloglival2] = MLfit_GLMbi(gg0b,Stim,opts); % do ML (requires optimization toolbox)
+%%  Set prior covariance matrix ---------------
+nparams = numel(gg0.kt);
+C = speye(nparams);
 
+% Make grid of lambda (ridge parameter) values 
+lamvals = 2.^(0:10);
+nlam = length(lamvals);
+testlogli = zeros(nlam,1);
+trainlogli = zeros(nlam,1);
+Kest = zeros([size(gg1.k), nlam]);
 
-%% 5. Plot results ====================
+% Initialize params
+gg0_train = gg0;
+gg0_train.sps = spstrain;
+
+for jj = 1:nlam
+    Cinv = lamvals(jj)*C;
+    
+    % Do MAP estimation of model params
+    [gg2, negloglival2] = MAPfit_GLM(gg0_train,stimtrain,Cinv,opts); % do ML (requires optimization toolbox)
+    
+    Kest(:,:,jj) = gg2.k;
+    trainlogli(jj) = -negloglival2;
+    gg2tst = gg;
+    gg2tst.sps = spstest;
+    testlogli(jj) = -neglogli_GLM(gg2tst,stimtest);
+end
+
+%% 6. Plot results ====================
 %figure(3);
 
 subplot(231);  % True filter  % ---------------

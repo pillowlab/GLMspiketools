@@ -1,5 +1,5 @@
-function [gg,neglogp,neglogli,H,Xstruct] = MAPfit_GLM(gg,Stim,Cinv,optimArgs)
-%  [gg,neglogp,neglogli,H,Xstruct] = MAPfit_GLM(gg,C,Stim,optimArgs)
+function [gg,neglogli,H,Xstruct,neglogp] = MAPfit_GLM(gg,Stim,Cinv,optimArgs)
+%  [gg,neglogli,H,Xstruct,neglogp] = MAPfit_GLM(gg,C,Stim,optimArgs)
 % 
 %  Computes the MAP estimate for GLM params, using grad and hessians under
 %  a zero-mean Gaussian prior with inverse covariance Cinv.
@@ -19,13 +19,13 @@ function [gg,neglogp,neglogli,H,Xstruct] = MAPfit_GLM(gg,Stim,Cinv,optimArgs)
 %  Outputs:
 %  -------
 %     ggnew = new param struct (with MAP params);
-%   neglogp = negative log-posterior at MAP estimate
 %  neglogli = negative log-likelihood at MAP estimate
 %         H = Hessian of negative log-likelihood at MAP estimate
 %   Xstruct = structure with design matrices for spike-hist and stim terms
+%   neglogp = negative log-posterior at MAP estimate
 
 % Set optimization parameters 
-if nargin > 2
+if nargin > 3
     opts = optimset('Gradobj','on','Hessian','on', optimArgs{:});
 else
     opts = optimset('Gradobj','on','Hessian','on','display','iter');
@@ -51,7 +51,7 @@ lpost = @(prs)(neglogpost(prs,lfunc,Cinv));
 
 % Compute Hessian of log-likelihood, if desired
 if nargout > 1 
-    [neglogli,~,H] = Loss_GLM_logli(prsMAP,Xstruct);
+    [neglogli,~,H] = lfunc(prsMAP);
 end
 
 % Put returned vals back into param structure
