@@ -21,13 +21,13 @@ nkx = 10;
 xxk = (1:1:nkx)'; % pixel locations
 ttk = dtStim*(-nkt+1:0)'; % time bins for filter
 kx = 1./sqrt(2*pi*4).*exp(-(xxk-nkx/2).^2/5);
-k = kt*kx'; % Make space-time separable filter
-k = k./norm(k(:))/1.5;
+ktrue = kt*kx'; % Make space-time separable filter
+ktrue = ktrue./norm(ktrue(:));
 
 % Insert into glm structure (created with default history filter)
 ggsim = makeSimStruct_GLM(nkt,dtStim,dtSp); % Create GLM structure with default params
-ggsim.k = k; % Insert into simulation struct
-ggsim.dc = 2; 
+ggsim.k = ktrue; % Insert into simulation struct
+ggsim.dc = 3; 
 
 % === Make Fig: model params =======================
 clf; subplot(3,3,[1 4]); % ------------------------------------------
@@ -47,13 +47,14 @@ set(gca, 'xlim', [.5 nkx+.5]); xlabel('space (pixels)');
 %% 2. Generate some training data ========================================
 
 % generate stimulus
-slen = 5000; % Stimulus length (frames);  More samples gives better fit
-gfilt = normpdf(-3:3, 0, 1); 
+slen = 10000; % Stimulus length (frames);  More samples gives better fit
+gfilt = normpdf(-3:3, 0, .8); 
 Stim = conv2(randn(slen,nkx),gfilt,'same'); %  convolve in space
 Stim = conv2(Stim,gfilt','same'); % convolve in time
 
 [tsp,sps,Itot,Istm] = simGLM(ggsim,Stim);  % run model
 nsp = length(tsp);
+rlen = length(sps);
 
 % --- Make plot of first 0.5 seconds of data --------
 tlen = 0.5;
@@ -102,7 +103,7 @@ fprintf('Initial negative log-likelihood: %.5f\n', negloglival0);
 
 % Do ML estimation of model params
 opts = {'display', 'iter', 'maxiter', 1000};
-[gg1, negloglival1a] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
+[gg1, negloglival1] = MLfit_GLM(gg0,Stim,opts); % do ML (requires optimization toolbox)
 
 
 %% 4. Fit GLM with iid Gaussian ("ridge regression") prior.
@@ -110,71 +111,113 @@ opts = {'display', 'iter', 'maxiter', 1000};
 % Divide data into training and test
 trainfrac = 0.8;
 ntrain = ceil(trainfrac*slen);
-spstrain = sps(1:ntrain); stimtrain = Stim(1:ntrain,:);
-spstest = sps(ntrain+1:end); stimtest = Stim(ntrain+1:end,:);
+ntrainsps = ceil(trainfrac*rlen);
+stimtrain = Stim(1:ntrain,:); stimtest = Stim(ntrain+1:end,:);
+spstrain = sps(1:ntrainsps); spstest = sps(ntrainsps+1:end); 
 
-%%  Set prior covariance matrix ---------------
+% Set prior covariance matrix ---------------
 nparams = numel(gg0.kt);
-C = speye(nparams);
+Ceye = speye(nparams);
 
-% Make grid of lambda (ridge parameter) values 
-lamvals = 2.^(0:10);
+% Make grid of lambda (ridge parameter) values -----
+lamvals = 2.^(-1:10);
 nlam = length(lamvals);
 testlogli = zeros(nlam,1);
 trainlogli = zeros(nlam,1);
-Kest = zeros([size(gg1.k), nlam]);
+ggridge = cell(nlam,1);
 
-% Initialize params
+% Initialize params --------
 gg0_train = gg0;
 gg0_train.sps = spstrain;
 
+% Find MAP estimate for each value of ridge parameter
+fprintf('====Doing grid search for ridge parameter====\n');
 for jj = 1:nlam
-    Cinv = lamvals(jj)*C;
+    fprintf('lambda = %.1f\n',lamvals(jj));
+    Cinv = lamvals(jj)*Ceye;  % inverse covariance of prior
     
     % Do MAP estimation of model params
-    [gg2, negloglival2] = MAPfit_GLM(gg0_train,stimtrain,Cinv,opts); % do ML (requires optimization toolbox)
+    [ggridge{jj}, negloglival] = MAPfit_GLM(gg0_train,stimtrain,Cinv,opts); % do ML (requires optimization toolbox)
+    trainlogli(jj) = -negloglival;
     
-    Kest(:,:,jj) = gg2.k;
-    trainlogli(jj) = -negloglival2;
-    gg2tst = gg;
+    % Compute test log-likelihood
+    gg2tst = ggridge{jj};
     gg2tst.sps = spstest;
     testlogli(jj) = -neglogli_GLM(gg2tst,stimtest);
 end
 
+% Plot test log likelihood
+clf; semilogx(lamvals,testlogli, '-o');
+xlabel('lambda'); ylabel('test log-likelihood'); title('ridge prior');
+
+% Select best ridge param and fit on all data.
+[~,imax] = max(testlogli);
+[gg2,neglogli2] = MAPfit_GLM(gg1,Stim,lamvals(imax)*Cinv,opts);
+
+%% 5. Fit GLM with smoothing prior.
+
+% Make matrices to compute column and row pairwise differences
+Dx = spdiags(ones(nkx,1)*[-1 1],0:1,nkx-1,nkx);
+Dt = spdiags(ones(nkt,1)*[-1 1],0:1,nkt-1,nkt);
+Dtbas = Dt*gg1.ktbas;
+Mt = kron(speye(nkx),Dtbas'*Dtbas);  % computes squared diffs along columns
+Mx = kron(Dx,gg1.ktbas); % computes squared diffs along row
+Mx = Mx'*Mx;
+C0 = Mt + Mx;  % default covariance matrix
+
+% Make grid of lambda (smoothing parameter) values -----
+lamvals_sm = 2.^(0:13);
+nlam = length(lamvals_sm);
+testlogli_sm = zeros(nlam,1);
+trainlogli_sm = zeros(nlam,1);
+ggsmooth = cell(nlam,1);
+
+% Find MAP estimate for each value of ridge parameter
+for jj = 1:nlam
+    Cinv = lamvals_sm(jj)*C0; % inverse covariance of prior
+    
+    % Do MAP estimation of model params
+    [ggsmooth{jj}, negloglival] = MAPfit_GLM(gg0_train,stimtrain,Cinv,opts); % do ML (requires optimization toolbox)
+    trainlogli_sm(jj) = -negloglival;
+    
+    % Compute test log-likelihood
+    gg3tst = ggsmooth{jj};
+    gg3tst.sps = spstest;
+    testlogli_sm(jj) = -neglogli_GLM(gg3tst,stimtest);
+end
+
+% Plot test log likelihood
+clf; semilogx(lamvals_sm,testlogli_sm, '-o');
+xlabel('lambda'); ylabel('test log-likelihood'); title('smoothing prior');
+
+% Select best ridge param and fit on all data.
+[~,imax] = max(testlogli_sm);
+[gg3,neglogli3] = MAPfit_GLM(gg2,Stim,lamvals_sm(imax)*C0,opts);
+
+
 %% 6. Plot results ====================
-%figure(3);
 
 subplot(231);  % True filter  % ---------------
 imagesc(ggsim.k); colormap gray;
 title('True Filter');ylabel('time');
 subplot(232);  % sta % ------------------------
-imagesc(sta);
-title('raw STA'); ylabel('time');
+imagesc(gg1.k);
+title('ML estimate'); ylabel('time');
 
-subplot(233); % sta-projection % ---------------
-imagesc(gg0.k); title('low-rank STA');
-
-subplot(234); % estimated filter % ---------------
-imagesc(gg1.k); title('ML estimate: full filter'); xlabel('space'); ylabel('time');
+subplot(234); % sta-projection % ---------------
+imagesc(gg2.k); title('MAP: ridge prior'); xlabel('space'); ylabel('time');
 
 subplot(235); % estimated filter % ---------------
-imagesc(gg2.k); title('ML estimate: bilinear filter'); xlabel('space'); 
+imagesc(gg3.k); title('MAP: smoothing prior'); xlabel('space'); 
 
 subplot(236); % ----------------------------------
-plot(ggsim.iht,exp(ggsim.ih),'k', gg1.iht,exp(gg1.ihbas*gg1.ihw),'b',...
-    gg2.iht, exp(gg2.ihbas*gg2.ihw), 'r'); axis tight;
+plot(ggsim.iht,exp(ggsim.ih),'k--', gg1.iht,exp(gg1.ihbas*gg1.ihw),...
+    gg2.iht, exp(gg2.ihbas*gg2.ihw), ...
+    gg3.iht, exp(gg3.ihbas*gg3.ihw) ...
+    ); axis tight;
 title('post-spike kernel');  xlabel('time after spike (s)');
-legend('true','GLM','bilinear GLM');
+legend('true','ML','ridge','smooth');
 
-% Errors in STA and ML estimate
-ktmu = normalizecols([mean(ggsim.k,2),mean(gg1.k,2),mean(gg2.k,2)]);
-kxmu = normalizecols([mean(ggsim.k)',mean(gg1.k)',mean(gg2.k)']);
-
-msefun = @(k)(sum((k(:)-ggsim.k(:)).^2)); % error function
-fprintf(['K-filter errors (GLM vs. GLMbilinear):\n', ...
-    'Temporal error:  %.3f    %.3f\n', ...
-    ' Spatial error:  %.3f    %.3f\n', ...
-    '   Total error:  %.3f    %.3f\n'], ...    
-    subspace(ktmu(:,1),ktmu(:,2)), subspace(ktmu(:,1),ktmu(:,3)), ...
-    subspace(kxmu(:,1),kxmu(:,2)), subspace(kxmu(:,1),kxmu(:,3)), ...
-    msefun(gg1.k), msefun(gg2.k));
+r2fun = @(k)(1-sum((k(:)-ktrue(:)).^2)./sum(ktrue(:).^2)); % error function
+fprintf('\nK filter R^2:\n ----------\n ML = %9.3f\n Ridge = %6.3f\n Smooth = %4.3f\n',...
+    r2fun(gg1.k), r2fun(gg2.k),r2fun(gg3.k));

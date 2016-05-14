@@ -63,21 +63,24 @@ end
 function [negLP,dLP,H] = neglogpost(prs,lfunc,Cinv)
 % Compute log-posterior by adding quadratic penalty to log-likelihood
 
+nprs = size(Cinv,1); % number of parameters in C
+preg = prs(1:nprs);  % parameters being regularized.
+
 switch nargout
 
     case 1  % evaluate function
-        negLP = lfunc(prs) + .5*prs'*Cinv*prs;
+        negLP = lfunc(prs) + .5*preg'*Cinv*preg;
     
     case 2  % evaluate function and gradient
         [negLP,dLP] = lfunc(prs);
-        negLP = negLP + .5*prs'*Cinv*prs;        
-        dLP = dLP + Cinv*prs;
+        negLP = negLP + .5*preg'*Cinv*preg;        
+        dLP(1:nprs) = dLP(1:nprs) + Cinv*preg;
 
     case 3  % evaluate function and gradient
         [negLP,dLP,H] = lfunc(prs);
-        negLP = negLP + .5*prs'*Cinv*prs;        
-        dLP = dLP + Cinv*prs;
-        H = H + Cinv;
+        negLP = negLP + .5*preg'*Cinv*preg;        
+        dLP(1:nprs) = dLP(1:nprs) + Cinv*preg;
+        H(1:nprs,1:nprs) = H(1:nprs,1:nprs) + Cinv;
 end
 
 end
