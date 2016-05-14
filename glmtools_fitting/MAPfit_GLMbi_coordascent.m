@@ -59,18 +59,18 @@ nlpx = .5*gg.kx(:)'*Cx*gg.kx(:);
 nlpt = .5*gg.kt(:)'*Ct*gg.kt(:);
 neglogp0 = neglogli0+nlpx+nlpt; % initial log-posterior
 fprintf('Initial penalty on x components: %.2f\n', nlpx);
-fprinft('Initial penalty on t components: %.2f\n', nlpt);
+fprintf('Initial penalty on t components: %.2f\n', nlpt);
 
 % Do coordinate ascent until STOP
 while (jjiter<maxiter) && dlogp>ftol
     
     % ---- Update temporal params -----
-    fprintf('Iter #%d: Updating temporal params\n', jjiter);
+    fprintf('Iter #%d: Updating t params\n', jjiter);
     tStim = Stim*reshape(ggx.k',[],gg.krank);
     ggt.dc = ggx.dc;  % update dc param
     [ggt,tneglogli] = MAPfit_GLM(ggt,tStim,Ct,optimArgs);
     nlpt = .5*ggt.kt(:)'*Ct*ggt.kt(:);
-    fprintf('dlogp = %.4f\n\n', neglogp0-(tneglogli+nlpt+nlpx));
+    fprintf('  dlogp = %.4f (tpenalty=%.2f)\n', neglogp0-(tneglogli+nlpt+nlpx),nlpt);
     
     % Convolve stimulus with temporal filters
     for irank = 1:krank
@@ -80,12 +80,12 @@ while (jjiter<maxiter) && dlogp>ftol
     end
     
     % ---- Update spatial params ----
-    fprintf('Iter #%d: Updating spatial params\n', jjiter);
+    fprintf('Iter #%d: Updating x params\n', jjiter);
     ggx.dc = ggt.dc; % update dc param
     [ggx,xneglogli] = MAPfit_GLM(ggx,xStim,Cx,optimArgs);
     nlpx = .5*ggx.k(:)'*Cx*ggx.k(:);
     neglogp = xneglogli+nlpt+nlpx;
-    fprintf('dlogp = %.4f\n\n', neglogp0-neglogp);
+    fprintf('  dlogp = %.4f (xpenalty=%.2f)\n', neglogp0-neglogp,nlpx);
 
     % Update iters
     jjiter = jjiter+1;  % counter
@@ -94,7 +94,7 @@ while (jjiter<maxiter) && dlogp>ftol
     
 end
 
-fprintf('\nFinished coordinate ascent: %d iterations (dlogp=%.6f)\n',jjiter,dlogp);
+fprintf('Finished coordinate ascent: %d iterations (dlogp=%.6f)\n',jjiter,dlogp);
 
 % Compute conditional Hessians, if desired
 if nargout > 2
