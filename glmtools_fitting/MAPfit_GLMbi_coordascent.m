@@ -55,10 +55,13 @@ dlogp = inf;  % initialize change in log-posterior
 jjiter = 0;  % initialize counter
 
 % compute initial penalties (negative log prior)
-nlpx = .5*gg.kx(:)'*Cx*gg.kx(:)
-nlpt = .5*gg.kt(:)'*Ct*gg.kt(:)
-neglogp0 = neglogli0+nlpx+nlpt;
+nlpx = .5*gg.kx(:)'*Cx*gg.kx(:);
+nlpt = .5*gg.kt(:)'*Ct*gg.kt(:);
+neglogp0 = neglogli0+nlpx+nlpt; % initial log-posterior
+fprintf('Initial penalty on x components: %.2f\n', nlpx);
+fprinft('Initial penalty on t components: %.2f\n', nlpt);
 
+% Do coordinate ascent until STOP
 while (jjiter<maxiter) && dlogp>ftol
     
     % ---- Update temporal params -----
