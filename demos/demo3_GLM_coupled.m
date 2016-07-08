@@ -8,7 +8,7 @@
 %     (due to the need to pass activity between neurons)
 
 % Make sure paths are set (assumes this script called from 'demos' directory)
-cd ..; setpaths; cd demos/
+cd ..; setpaths_GLMspiketools; cd demos/
 
 
 %%  ===== 1. Set parameters and display for GLM  ============ %

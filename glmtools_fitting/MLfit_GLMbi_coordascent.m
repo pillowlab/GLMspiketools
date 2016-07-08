@@ -55,7 +55,7 @@ jjiter = 0;  % initialize counter
 while (jjiter<maxiter) && dlogli>ftol
     
     % ---- Update temporal params -----
-    fprintf('Iter #%d: Updating txs params\n', jjiter);
+    fprintf('Iter #%d: Updating temporal params\n', jjiter);
     tStim = Stim*reshape(ggx.k',[],gg.krank);
     ggt.dc = ggx.dc;  % update dc param
     [ggt,tneglogli] = MLfit_GLM(ggt,tStim,optimArgs);
@@ -69,7 +69,7 @@ while (jjiter<maxiter) && dlogli>ftol
     end
     
     % ---- Update spatial params ----
-    fprintf('Iter #%d: Updating x params\n', jjiter);
+    fprintf('Iter #%d: Updating spatial params\n', jjiter);
     ggx.dc = ggt.dc; % update dc param
     [ggx,xneglogli] = MLfit_GLM(ggx,xStim,optimArgs);
     fprintf('  dlogli = %.4f\n', neglogli0-xneglogli);

@@ -1,5 +1,5 @@
-function [gg,neglogli,H,neglogp] = MAPfit_GLMbi_coordascent(gg,Stim,Cx,Ct,maxiter,ftol,optimArgs)
-%  [gg,neglogli,H,neglogp] = MAPfit_GLMbi_coordascent(gg,Stim,maxiter,ftol,optimArgs);
+function [gg,neglogli,H,neglogp] = MAPfit_GLMbi_coordascent(gg,Stim,Cxinv,Ctinv,maxiter,ftol,optimArgs)
+%  [gg,neglogli,H,neglogp] = MAPfit_GLMbi_coordascent(gg,Stim,Cxinv,Ctinv,maxiter,ftol,optimArgs)
 % 
 %  Computes the MAP estimate for GLM params, with gradient and hessians, via
 %  coordinate ascent, for bilinear (low rank) parametrization of space-time filter.
@@ -7,8 +7,8 @@ function [gg,neglogli,H,neglogp] = MAPfit_GLMbi_coordascent(gg,Stim,Cx,Ct,maxite
 %  Inputs: 
 %     gg = param struct
 %     Stim = stimulus
-%       Cx = inverse covariance for spatial params
-%       Ct = inverse covariance for temporal params
+%     Cxinv = inverse covariance for spatial params
+%     Ctinv = inverse covariance for temporal params
 %     maxiter = maximum number of coordinate ascent steps 
 %     ftol = tolerance for stopping based on function improvement 
 %     optimArgs = cell array of optimization params (optional)
@@ -58,8 +58,8 @@ jjiter = 0;  % initialize counter
 kt = gg.kt; % temporal params
 kx = gg.kx; % spatial params
 krank = size(kt,2); % rank
-nlpx = .5*kx'*Cx*kx;
-nlpt = .5*kt'*Ct*kt;
+nlpx = .5*kx'*Cxinv*kx;
+nlpt = .5*kt'*Ctinv*kt;
 nlp = trace(nlpx*nlpt);
 
 neglogp0 = neglogli0+nlp; % initial log-posterior
@@ -72,8 +72,8 @@ while (jjiter<maxiter) && dlogp>ftol
     fprintf('Iter #%d: Updating t params\n', jjiter);
     tStim = Stim*reshape(ggx.k',[],gg.krank);
     ggt.dc = ggx.dc;  % update dc param
-    [ggt,tneglogli] = MAPfit_GLM(ggt,tStim,kron(nlpx,Ct),optimArgs);
-    nlpt = .5*ggt.kt'*Ct*ggt.kt;
+    [ggt,tneglogli] = MAPfit_GLM(ggt,tStim,kron(nlpx,Ctinv),optimArgs);
+    nlpt = .5*ggt.kt'*Ctinv*ggt.kt;
     nlp = trace(nlpx*nlpt);
     fprintf('  dlogp = %.4f (penalty=%.2f)\n', neglogp0-(tneglogli+nlp), nlp);
     
@@ -87,8 +87,8 @@ while (jjiter<maxiter) && dlogp>ftol
     % ---- Update spatial params ----
     fprintf('Iter #%d: Updating x params\n', jjiter);
     ggx.dc = ggt.dc; % update dc param
-    [ggx,xneglogli] = MAPfit_GLM(ggx,xStim,kron(nlpt,Cx),optimArgs);
-    nlpx = .5*reshape(ggx.k,[],krank)'*Cx*reshape(ggx.k(:),[],krank);
+    [ggx,xneglogli] = MAPfit_GLM(ggx,xStim,kron(nlpt,Cxinv),optimArgs);
+    nlpx = .5*reshape(ggx.k,[],krank)'*Cxinv*reshape(ggx.k(:),[],krank);
     nlp = trace(nlpx*nlpt);
     neglogp = xneglogli+nlp;
     fprintf('  dlogp = %.4f (penalty=%.2f)\n', neglogp0-neglogp,nlp);
@@ -108,8 +108,8 @@ if nargout > 2
     % Compute Hessian for time components
     tStim = Stim*(ggx.k');
     ggt.dc = ggx.dc;  % update dc param
-    [ggt,~,Ht] = MAPfit_GLM(ggt,tStim,Ct,optimArgs);
-    nlpt = .5*ggt.kt(:)'*Ct*ggt.kt(:);
+    [ggt,~,Ht] = MAPfit_GLM(ggt,tStim,Ctinv,optimArgs);
+    nlpt = .5*ggt.kt(:)'*Ctinv*ggt.kt(:);
 
     % Compute Hessian for space components
     for irank = 1:krank
@@ -118,8 +118,8 @@ if nargout > 2
         end
     end    
     ggx.dc = ggt.dc; % update dc param
-    [ggx,xneglogli,Hx] = MAPfit_GLM(ggx,xStim,Cx,optimArgs);
-    nlpx = .5*ggx.k(:)'*Cx*ggx.k(:);
+    [ggx,xneglogli,Hx] = MAPfit_GLM(ggx,xStim,Cxinv,optimArgs);
+    nlpx = .5*ggx.k(:)'*Cxinv*ggx.k(:);
     neglogp = xneglogli+nlpt+nlpx;
     H = {Ht,Hx};  % Hessians for t and x components
 end
