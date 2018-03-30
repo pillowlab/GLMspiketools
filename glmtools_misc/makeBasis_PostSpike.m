@@ -1,5 +1,5 @@
-function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0)
-% [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht)
+function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt)
+% [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt)
 %
 % Make nonlinearly stretched basis consisting of raised cosines
 % -------
@@ -16,11 +16,10 @@ function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0)
 %                     cutoff at absref)
 %
 %     dt = grid of time points for representing basis
-%     iht (optional) = cut off time (or extend) basis so it matches this
 %  --------
 %  Outputs:  iht = time lattice on which basis is defined
 %            ihbas = orthogonalized basis
-%            ihbasis = original (non-orthogonal) basis 
+%            ihbasis = original raised cosine (non-orthogonal) basis 
 %
 %  -------------
 %  Example call:
@@ -34,14 +33,14 @@ function [iht, ihbas, ihbasis] = makeBasis_PostSpike(ihprs,dt,iht0)
 ncols = ihprs.ncols;
 b = ihprs.b;
 hpeaks = ihprs.hpeaks;
-if isfield(ihprs, 'absref');
+if isfield(ihprs, 'absref')
     absref = ihprs.absref;
 else
     absref = 0;
 end
 
 % Check input values
-if (hpeaks(1)+b) < 0, 
+if (hpeaks(1)+b) < 0 
     error('b + first peak location: must be greater than 0'); 
 end
 if absref >= dt  % use one fewer "cosine-shaped basis vector
@@ -53,15 +52,28 @@ end
 % nonlinearity for stretching x axis (and its inverse)
 nlin = @(x)log(x+1e-20);
 invnl = @(x)exp(x)-1e-20; % inverse nonlinearity
+ff = @(x,c,dc)(cos(max(-pi,min(pi,(x-c)*pi/dc/2)))+1)/2; % raised cosine basis vector
 
 % Generate basis of raised cosines
-yrnge = nlin(hpeaks+b);        % nonlinearly transformed first & last bumps
-db = diff(yrnge)/(ncols-1);    % spacing between cosine bump peaks
-ctrs = yrnge(1):db:yrnge(2);   % centers (peak locations) for basis vectors
+if ncols > 1
+    yrnge = nlin(hpeaks+b);        % nonlinearly transformed first & last bumps
+    db = diff(yrnge)/(ncols-1);    % spacing between cosine bump peaks
+    ctrs = yrnge(1):db:yrnge(2);  % centers (peak locations) for basis vectors
+else    
+    % if only 1 basis function
+    if length(hpeaks)==1
+        hpeaks = [0 hpeaks]; % place imaginary 1st bump at 0
+    end
+    yrnge = nlin(hpeaks+b); % nonlinearly transformed first & last bumps
+    ncolseff = 3; % use 3 "effective" number of basis funcs, so left edge decays at 0
+    db = diff(yrnge)/(ncolseff-1);    % spacing between cosine bump peaks
+    ctrs = yrnge(2);   % centers (peak locations) for basis vectors
+end    
+
+% Make basis
 mxt = invnl(yrnge(2)+2*db)-b;  % maximum time bin
 iht = (dt:dt:mxt)';
 nt = length(iht);        % number of points in iht
-ff = @(x,c,dc)(cos(max(-pi,min(pi,(x-c)*pi/dc/2)))+1)/2; % raised cosine basis vector
 ihbasis = ff(repmat(nlin(iht+b), 1, ncols), repmat(ctrs, nt, 1), db);
 
 % create first basis vector as step-function for absolute refractory period
@@ -75,24 +87,3 @@ end
 
 % compute orthogonalized basis
 ihbas = orth(ihbasis);  
-
-% Add more time bins (or remove bins) if this basis doesn't match iht0
-if nargin > 2
-    if (diff(iht0(1:2)) ~= dt)
-        error('iht passed in has different time-bin size');
-    end
-    niht = length(iht0);
-    if iht(end) > iht0(end)  % Truncate basis
-        iht = iht0;
-        ihbasis = ihbasis(1:niht,:);
-        ihbas = ihbas(1:niht,:);
-    elseif iht(end) < iht0(end); % Extend basis
-        nextra = niht-length(iht);
-        iht = iht0;
-        ihbasis = [ihbasis; zeros(nextra,ncols)];
-        ihbas =   [ihbas; zeros(nextra,ncols)];
-    end
-end
-        
-     
-    
