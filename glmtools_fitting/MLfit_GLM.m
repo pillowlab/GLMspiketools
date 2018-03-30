@@ -16,10 +16,9 @@ function [gg,neglogli,H,Xstruct] = MLfit_GLM(gg,Stim,optimArgs)
 %   Xstruct = structure with design matrices for spike-hist and stim terms
 
 % Set optimization parameters 
-if nargin > 2
-    opts = optimset('Gradobj','on','Hessian','on', optimArgs{:});
-else
-    opts = optimset('Gradobj','on','Hessian','on','display','iter');
+algopts = getFminOptsForVersion(version);
+if nargin > 2, opts = optimset(algopts{:}, optimArgs{:});
+else, opts = optimset(algopts{:});
 end
 
 % --- Create design matrix extract initial params from gg ----------------
