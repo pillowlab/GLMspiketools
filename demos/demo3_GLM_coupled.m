@@ -115,7 +115,7 @@ gg0.ihw2 = zeros(nhbasis,1); % params for cross-coupling filter
 gg0.ih = [gg0.ihbas*gg0.ihw gg0.ihbas2*gg0.ihw2];
 gg0.iht = iht;
 gg0.dc = 0; % Initialize dc term to zero
-gg0.couplednums = 2; % number of cell coupled to this one (for clarity)
+gg0.couplednums = 2; % cell numbers of cells coupled to this one 
 
 % Set spike responses for cell 1 and coupled cell
 gg0.sps = sps(:,1);  

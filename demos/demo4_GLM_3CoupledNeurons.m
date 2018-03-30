@@ -18,10 +18,6 @@ dtSp = .001;  % Bin size for simulating model & computing likelihood (must evenl
 nkt = 1;    % Number of time bins in stimulus filter k %% FIX THIS SO IT DOESN'T MAKE NAN
 gg = makeSimStruct_GLM(nkt,dtStim,dtSp);  % Create GLM struct with default params
 
-% Set stimulus filter and dc offset
-gg.k = 0.5;  % stim filter
-gg.dc = 2.5; % input bias (dc offset)
-
 %% Set up basis for self-coupling filters
 
 % Make basis for self-coupling term
@@ -42,7 +38,7 @@ ihbasprs2.absref = []; % no abs-refracotry period for this one
 [iht2,ihbas2,ihbasis2] = makeBasis_PostSpike(ihbasprs2,dtSp);
 nht2 = length(iht2);
 
-% put them on same time bins
+% pad to put them into the same time bins, if necessary
 if nht2>nht
     % padd ih1 with zeros
     iht = iht2; zz = zeros(nht2-nht,ihbasprs.ncols);
@@ -128,9 +124,7 @@ Stim = stimsd*randn(slen,swid);  % Gaussian white noise stimulus
 % Initialize param struct for fitting 
 gg1in = makeFittingStruct_GLM(dtStim,dtSp);  % Initialize params for fitting struct 
 
-couplednums = [2 3];  % the cells coupled to this one
-
-% Initialize fields (using h and k bases computed above)
+% Initialize fields (using h bases computed above)
 gg1in.ktbas = 1; % k basis
 gg1in.ihbas = ihbas; % h self-coupling basis
 gg1in.ihbas2 = ihbas2; % h coupling-filter basis
@@ -140,15 +134,16 @@ nhbasis2 = size(ihbas2,2); % number of basis vectors in h basis
 gg1in.kt = 1; % initial params from scaled-down sta 
 gg1in.k = 1;  % initial setting of k filter
 gg1in.ihw = zeros(nhbasis,1); % init params for self-coupling filter
-gg1in.ihw2 = zeros(nhbasis2,2); % init params for cross-coupling filter
+gg1in.ihw2 = zeros(nhbasis2,nneur-1); % init params for cross-coupling filter
 gg1in.ih = [gg1in.ihbas*gg1in.ihw gg1in.ihbas2*gg1in.ihw2];
 gg1in.iht = iht;
 gg1in.dc = 0; % Initialize dc term to zero
-gg1in.couplednums = couplednums; % number of cell coupled to this one (for clarity)
 
-% Set spike responses for cell 1 and coupled cell
-gg1in.sps = sps(:,1);  
-gg1in.sps2 = sps(:,2:3); 
+% Set fields for fitting cell #1
+couplednums = [2 3];  % the cells coupled to this one
+gg1in.couplednums = couplednums; % cell numbers of cells coupled to this one 
+gg1in.sps = sps(:,1);  % Set spike responses for cell 1 
+gg1in.sps2 = sps(:,couplednums); % spikes from coupled cells
 
 % Compute initial value of negative log-likelihood (just to inspect)
 [neglogli0,rr] = neglogli_GLM(gg1in,Stim);
@@ -164,7 +159,7 @@ cellnum = 2;
 couplednums = setdiff(1:3, cellnum); % the cells coupled to this one
 
 gg2in = gg1in; % initial parameters for fitting 
-gg2in.sps = sps(:,2); % cell 2 spikes
+gg2in.sps = sps(:,cellnum); % cell 2 spikes
 gg2in.sps2 = sps(:,couplednums); % spike trains from coupled cells 
 gg2in.couplednums = couplednums; % cells coupled to this one
 
@@ -175,11 +170,11 @@ fprintf('Fitting neuron 2\n');
 
 %% ===== 6. Fit cell #3 (with coupling from cell #1 and #2) ==================
 
- cellnum = 3;
+cellnum = 3;
 couplednums = setdiff(1:3, cellnum);
 
 gg3in = gg1in; % initial parameters for fitting 
-gg3in.sps = sps(:,3); % cell 3 spikes
+gg3in.sps = sps(:,cellnum); % cell 3 spikes
 gg3in.sps2 = sps(:,couplednums); % spike trains from coupled cells 
 gg3in.couplednums = couplednums; % cells coupled to this one
 
