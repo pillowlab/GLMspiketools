@@ -178,16 +178,15 @@ end
   
 %% ===== 5. Plot true and fitted params for first few cells ============================================= %%
 
-clf reset;
-colors = get(gca,'colororder');
-nc = size(colors,1);
+clf reset; colors = get(gca,'colororder');
+ncolrs = size(colors,1); % number of traces to plot for each cell 
 ymax = max(exp([ggfit(1).ih(:);ggfit(2).ih(:);ggfit(3).ih(:);gg.ih(:)])); % max of y range
 
-for jj = 1:3
-    subplot(1,3,jj); % --Spike filters cell 1 % -------------
+for jj = 1:10
+    subplot(2,5,jj); % --Spike filters cell 1 % -------------
     ccpl = setdiff(1:nneur,jj); % coupled cells
     cnums = [jj, ccpl];
-    plot(gg.iht, exp(gg.ih(:,cnums(1:nc),jj)), ggfit(jj).iht, exp(ggfit(jj).ih(:,1:nc)), '--', 'linewidth', lw);
+    plot(gg.iht, exp(gg.ih(:,cnums(1:ncolrs),jj)), ggfit(jj).iht, exp(ggfit(jj).ih(:,1:ncolrs)), '--', 'linewidth', lw);
     hold on; plot(gg.iht, gg.iht*0+1, 'k'); hold off;
     title(sprintf('cell %d filters',jj)); axis tight; set(gca,'ylim',[0,ymax]);
     if jj==1
@@ -197,7 +196,8 @@ end
 
 % Print true and recovered params:
 fprintf('\n---------------------------------\n');
-fprintf('k: true   est   | h: true  est\n');
+fprintf('k: true   est   |  dc: true  est\n');
+fprintf('---------------------------------\n');
 for jj = 1:nneur
-    fprintf('  %5.2f  %5.2f      %5.2f %5.2f\n', [gg.k(jj), kfit(jj), gg.dc(jj), dcfit(jj)]);
+    fprintf('  %5.2f  %5.2f        %5.2f %5.2f\n', [gg.k(jj), kfit(jj), gg.dc(jj), dcfit(jj)]);
 end
