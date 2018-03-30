@@ -30,7 +30,7 @@ nht = length(iht); % number of bins
 
 % Make basis for cross-coupling term
 ihbasprs2.ncols = 1;  % number of basis vectors
-ihbasprs2.hpeaks = [0.001,.005]; % put peak at 10ms and "effective" 1st peak at 0
+ihbasprs2.hpeaks = [0.001,.005]; % put peak at 5ms and "effective" 1st peak at 0
 ihbasprs2.b = .001;  % smaller -> more logarithmic scaling
 ihbasprs2.absref = []; % no abs-refracotry period for this one
 % Make basis
@@ -57,7 +57,7 @@ plot(iht2, ihbasis2, ihbasprs2.hpeaks, 1, '*', 'linewidth', 2);
 xlabel('time after spike (ms)'); title('coupling basis');
 
 
-%% Set self-coupling weights
+%% Set self-coupling filter shapes
 
 wself = [-10; 3.2; -1]; % weights for self-coupling term
 ihself = ihbasis*wself; % self-coupling filter
@@ -76,8 +76,9 @@ k = randn(10,1)*0.5; % stimulus weights
 gg.k = permute(k,[2,3,1]);  % stimulus weights
 gg.dc = 2+(rand(1,nneur)-0.5);
 
+% Generate random coupling strengths
 WW = randn(nneur);  % coupling strengths
-WW = WW-diag(diag(WW)-1); % set diagonal to zero
+WW = WW-diag(diag(WW)-1); % set diagonal to zero (for self-coupling)
 
 gg.iht = iht;
 gg.ih = zeros(nht,nneur,nneur);
