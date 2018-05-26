@@ -14,4 +14,5 @@ basedir = pwd;  % The directory where this script lives
 addpath([basedir '/glmtools_fitting/']);
 addpath([basedir '/glmtools_misc/']);
 addpath([basedir '/nlfuns/']);
+addpath([basedir '/glmtools_spline/']);
 
